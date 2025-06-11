@@ -84,22 +84,26 @@ The library only enhances fields that have specific data attributes. Fields with
 | `data-input-mask` | Input | Mask pattern | Apply input masking (extensible) | `data-input-mask="(000) 000-0000"` |
 | `data-auto-complete` | Input | Custom type | Enhanced autocomplete behavior | `data-auto-complete="company-names"` |
 | `data-country-code` | Select | `"true"` | Populates select with country options | `<select data-country-code="true">` |
-| `data-country-format` | Select | `"flag-name-code"`, `"flag-name"`, `"name-code"`, `"name"`, `"code"` | How to display countries in options | `data-country-format="flag-name"` |
+| `data-country-format` | Select | `"name-code"`, `"name"`, `"code"` | How to display countries in options | `data-country-format="name"` |
 | `data-country-value` | Select | `"code"`, `"name"`, `"full"` | What value to store when selected | `data-country-value="name"` |
 | `data-country-sort-by` | Select | `"name"`, `"code"` | How to sort country list | `data-country-sort-by="name"` |
 | `data-country-searchable` | Select | `"true"`, `"false"` | Enable/disable search functionality (default: true) | `data-country-searchable="false"` |
+| `data-phone-format` | Input | `""` (empty) | Enable dynamic phone formatting based on country selection | `data-phone-format=""` |
+| `data-phone-country-field` | Input | CSS selector | Specify which country field to listen to (optional) | `data-phone-country-field="#country-select"` |
+| `data-phone-update-placeholder` | Input | `"true"`, `"false"` | Update placeholder with country format (default: true) | `data-phone-update-placeholder="false"` |
 
 ### Common Combinations
 
 | Use Case | Combination | Example |
 |----------|-------------|---------|
-| **Phone Input with Formatting** | `data-format="phone-us"` | `<input type="tel" name="phone" data-format="phone-us">` |
+| **Dynamic Phone Formatting** | `data-country-code` + `data-phone-format` | `<select data-country-code="true">` + `<input data-phone-format="">` |
+| **Static Phone Formatting** | `data-format="phone-us"` | `<input type="tel" name="phone" data-format="phone-us">` |
 | **Smart Textarea** | `data-auto-resize` + `data-character-counter` | `<textarea data-auto-resize="true" data-character-counter="true" maxlength="500">` |
 | **Conditional Field** | `data-shows-field` + `data-trigger-value` | `<select data-shows-field="#details" data-trigger-value="yes">` |
 | **Real-time Validation** | `data-custom-validation` + `data-validate-on-input` | `<input data-custom-validation="^\d{4}$" data-validate-on-input="true">` |
 | **Field Syncing** | `data-field-sync` + `data-sync-type` | `<input data-field-sync="#display" data-sync-type="uppercase">` |
 | **Advanced Counter** | `data-character-counter` + `data-counter-format` | `<textarea data-character-counter="true" data-counter-format="Words: {current}/{max}">` |
-| **Country Select** | `data-country-code` + `data-country-format` | `<select data-country-code="true" data-country-format="flag-name">` |
+| **Searchable Country Select** | `data-country-code` + `data-country-format` | `<select data-country-code="true" data-country-format="flag-name">` |
 
 ## Data Attributes for Enhanced Behaviors
 
@@ -204,11 +208,11 @@ The library only enhances fields that have specific data attributes. Fields with
 Automatically populate select fields with countries including flags, names, and dialing codes. **By default, creates a searchable dropdown** where users can type to filter countries.
 
 ```html
-<!-- Basic searchable country select (shows: 🇺🇸 United States (+1)) -->
+<!-- Basic searchable country select (shows: US (+1)) -->
 <select name="country" data-country-code="true">
   <option value="" disabled>Select Country</option>
 </select>
-<!-- Creates searchable input where users can type "United" or "US" to filter -->
+<!-- Creates searchable input where users can type "US" or "+1" to filter -->
 
 <!-- Disable search functionality (standard dropdown) -->
 <select data-country-code="true" data-country-searchable="false">
@@ -216,12 +220,12 @@ Automatically populate select fields with countries including flags, names, and 
 </select>
 
 <!-- Custom display format -->
-<select data-country-code="true" data-country-format="flag-name">
-  <!-- Shows: 🇺🇸 United States -->
+<select data-country-code="true" data-country-format="name">
+  <!-- Shows: US -->
 </select>
 
-<select data-country-code="true" data-country-format="name-code">
-  <!-- Shows: United States (+1) -->
+<select data-country-code="true" data-country-format="code">
+  <!-- Shows: +1 -->
 </select>
 
 <!-- Store country name instead of code -->
@@ -242,16 +246,63 @@ Automatically populate select fields with countries including flags, names, and 
 - ♿ **Accessible**: Maintains form submission compatibility and screen reader support
 
 **Available Formats:**
-- `flag-name-code` (default): 🇺🇸 United States (+1)
-- `flag-name`: 🇺🇸 United States  
-- `name-code`: United States (+1)
-- `name`: United States
+- `name-code` (default): US (+1)
+- `name`: US
 - `code`: +1
 
 **Value Options:**
 - `code` (default): Stores the dialing code (+1)
-- `name`: Stores the country name (United States)
-- `full`: Stores both (United States (+1))
+- `name`: Stores the ISO country code (US)
+- `full`: Stores both (US (+1))
+
+### Dynamic Phone Formatting
+
+Automatically format phone numbers based on the selected country code. **Replaces the old `data-format="phone-us"` with intelligent, country-aware formatting.**
+
+```html
+<!-- Country selector (searchable by default) -->
+<select name="country" data-country-code="true">
+  <option value="" disabled>Select Country</option>
+</select>
+
+<!-- Phone input with dynamic formatting -->
+<input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
+```
+
+**How it works:**
+1. 🌍 User selects a country (e.g., US (+1))
+2. 📱 Phone field automatically updates placeholder to `(555) 123-4567`
+3. ⌨️ As user types `5551234567`, it formats to `(555) 123-4567`
+4. 🔄 If user changes country to GB (+44), formatting switches to `07911 123456`
+
+**Comprehensive Country Support:**
+Powered by Google's **libphonenumber** library, supporting **240+ countries** with accurate, up-to-date formatting rules:
+
+- **US/Canada (+1)**: `(555) 123-4567`
+- **UK (+44)**: `07911 123456`
+- **France (+33)**: `06 12 34 56 78`
+- **Germany (+49)**: `030 12345678`
+- **Japan (+81)**: `090-1234-5678`
+- **China (+86)**: `138 0013 8000`
+- **India (+91)**: `98765 43210`
+- **Brazil (+55)**: `(11) 99999-9999`
+- **Australia (+61)**: `0412 345 678`
+- **Russia (+7)**: `8 912 345-67-89`
+- **...and 230+ more countries!**
+
+✨ **Automatic Updates**: Phone formats stay current with international standards  
+🎯 **Smart Formatting**: Handles mobile, landline, and special number formats  
+🌍 **Global Coverage**: Every country with a dialing code is supported  
+🚀 **Zero Maintenance**: No static data to update - everything comes from libphonenumber
+
+```html
+<!-- Advanced configuration -->
+<input type="tel" 
+       name="phone" 
+       data-phone-format=""
+       data-phone-country-field="#specific-country-select"
+       data-phone-update-placeholder="false">
+```
 
 ### Disable Enhancement
 
@@ -338,8 +389,13 @@ Automatically populate select fields with countries including flags, names, and 
   <!-- Standard Webflow field (no enhancement) -->
   <input type="text" name="name" required>
   
-  <!-- Enhanced phone formatting -->
-  <input type="tel" name="phone" data-format="phone-us">
+  <!-- Country selector with search -->
+  <select name="country" data-country-code="true">
+    <option value="" disabled>Select Country</option>
+  </select>
+  
+  <!-- Dynamic phone formatting based on country -->
+  <input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
   
   <!-- Service type with conditional field -->
   <select name="service" data-shows-field="#project-budget" data-trigger-value="web-design">

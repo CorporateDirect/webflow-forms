@@ -7,8 +7,8 @@
  * @license MIT
  */
 
-// Import country codes from separate file
-import countryCodes from './countryList.js';
+// Import libphonenumber for dynamic phone formatting and country data
+import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountryCallingCode } from 'libphonenumber-js';
 
 (function(window, document) {
     'use strict';
@@ -25,8 +25,97 @@ import countryCodes from './countryList.js';
             typingClass: 'wf-field-typing'
         },
 
-        // Country codes data
-        countryCodes: countryCodes,
+        // Phone formatting cache to avoid repeated lookups
+        phoneFormatCache: new Map(),
+        countryDataCache: null,
+
+        // Generate country data from libphonenumber (clean, no emoji flags)
+        getCountryCodes: function() {
+            // Return cached data if available
+            if (this.countryDataCache) {
+                return this.countryDataCache;
+            }
+
+            try {
+                const countries = getCountries();
+                const countryData = [];
+
+                for (const countryCode of countries) {
+                    try {
+                        const callingCode = getCountryCallingCode(countryCode);
+                        
+                        countryData.push({
+                            name: countryCode, // Use ISO code as name (e.g., "US", "GB", "FR")
+                            countryCode: `+${callingCode}`, // Dialing code (e.g., "+1", "+44", "+33")
+                            flag: '' // No flag emoji
+                        });
+                    } catch (error) {
+                        // Skip countries that cause errors
+                        continue;
+                    }
+                }
+
+                // Cache the result
+                this.countryDataCache = countryData;
+                return countryData;
+
+            } catch (error) {
+                console.warn('Could not generate country data from libphonenumber:', error);
+                // Fallback to minimal data
+                return [
+                    { name: 'US', countryCode: '+1', flag: '' },
+                    { name: 'GB', countryCode: '+44', flag: '' }
+                ];
+            }
+        },
+
+        // Get country code from dialing code using libphonenumber (e.g., "+1" -> "US")
+        getCountryFromDialingCode: function(dialingCode) {
+            if (!dialingCode) return null;
+            
+            // Remove the '+' prefix for comparison
+            const numericCode = dialingCode.replace('+', '');
+            
+            try {
+                // Get all countries supported by libphonenumber
+                const countries = getCountries();
+                
+                // Find the country that matches this dialing code
+                for (const countryCode of countries) {
+                    const countryCallingCode = getCountryCallingCode(countryCode);
+                    if (countryCallingCode === numericCode) {
+                        return countryCode;
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.warn(`Could not find country for dialing code: ${dialingCode}`, error);
+                return null;
+            }
+        },
+
+        // Get example phone number for a country
+        getExamplePhoneNumber: function(countryCode) {
+            if (!countryCode) return null;
+            
+            // Check cache first
+            if (this.phoneFormatCache.has(countryCode)) {
+                return this.phoneFormatCache.get(countryCode);
+            }
+            
+            try {
+                const exampleNumber = getExampleNumber(countryCode, 'mobile');
+                const formatted = exampleNumber ? exampleNumber.formatNational() : null;
+                
+                // Cache the result
+                this.phoneFormatCache.set(countryCode, formatted);
+                return formatted;
+            } catch (error) {
+                console.warn(`Could not get example number for country: ${countryCode}`, error);
+                return null;
+            }
+        },
 
         // Initialize the library
         init: function(options = {}) {
@@ -78,7 +167,7 @@ import countryCodes from './countryList.js';
         fieldHasEnhancements: function(field) {
             const enhancementAttributes = [
                 'format', 'characterCounter', 'autoResize', 'showsField', 'hidesField',
-                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode'
+                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode', 'phoneFormat'
             ];
             
             return enhancementAttributes.some(attr => 
@@ -161,6 +250,11 @@ import countryCodes from './countryList.js';
             // Country code selector
             if (field.dataset.countryCode === 'true' && field.tagName === 'SELECT') {
                 this.setupCountryCodeSelect(field);
+            }
+            
+            // Dynamic phone formatting based on country code
+            if (field.dataset.phoneFormat !== undefined) {
+                this.setupDynamicPhoneFormatting(field);
             }
         },
 
@@ -501,12 +595,15 @@ import countryCodes from './countryList.js';
 
         // Get formatted countries data
         getFormattedCountries: function(field) {
-            const displayFormat = field.dataset.countryFormat || 'flag-name-code';
+            const displayFormat = field.dataset.countryFormat || 'name-code';
             const sortBy = field.dataset.countrySortBy || 'name';
             const valueType = field.dataset.countryValue || 'code';
             
+            // Get countries from libphonenumber
+            const countries = this.getCountryCodes();
+            
             // Sort countries
-            let sortedCountries = [...this.countryCodes];
+            let sortedCountries = [...countries];
             if (sortBy === 'name') {
                 sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
             } else if (sortBy === 'code') {
@@ -516,21 +613,15 @@ import countryCodes from './countryList.js';
             return sortedCountries.map(country => {
                 let displayText;
                 switch (displayFormat) {
-                    case 'flag-name':
-                        displayText = `${country.flag} ${country.name}`;
-                        break;
-                    case 'name-code':
-                        displayText = `${country.name} (${country.countryCode})`;
-                        break;
                     case 'name':
                         displayText = country.name;
                         break;
                     case 'code':
                         displayText = country.countryCode;
                         break;
-                    case 'flag-name-code':
+                    case 'name-code':
                     default:
-                        displayText = `${country.flag} ${country.name} (${country.countryCode})`;
+                        displayText = `${country.name} (${country.countryCode})`;
                         break;
                 }
                 
@@ -745,6 +836,179 @@ import countryCodes from './countryList.js';
                 searchable: false,
                 countriesCount: countries.length 
             });
+        },
+
+        // Setup dynamic phone formatting based on country code selection
+        setupDynamicPhoneFormatting: function(field) {
+            // Find the country code selector
+            const countrySelector = this.findCountryCodeSelector(field);
+            
+            if (!countrySelector) {
+                console.warn('Phone format field found but no country code selector detected');
+                return;
+            }
+            
+            // Store reference to phone field on country selector
+            if (!countrySelector._phoneFields) {
+                countrySelector._phoneFields = [];
+            }
+            countrySelector._phoneFields.push(field);
+            
+            // Set initial format if country is already selected
+            this.updatePhoneFormat(field, countrySelector);
+            
+            // Listen for country changes
+            const updateFormat = () => {
+                setTimeout(() => this.updatePhoneFormat(field, countrySelector), 0);
+            };
+            
+            // Handle both standard select and searchable country selects
+            if (countrySelector.tagName === 'SELECT') {
+                countrySelector.addEventListener('change', updateFormat);
+            } else if (countrySelector.classList.contains('wf-country-search')) {
+                // For searchable country selects, listen to the hidden select
+                const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
+                if (hiddenSelect) {
+                    hiddenSelect.addEventListener('change', updateFormat);
+                }
+            }
+            
+            // Also listen for custom country selection events
+            document.addEventListener('webflowField:countrySelected', (e) => {
+                if (e.detail.field === countrySelector || 
+                    (countrySelector._phoneFields && countrySelector._phoneFields.includes(field))) {
+                    this.updatePhoneFormat(field, countrySelector);
+                }
+            });
+            
+            this.triggerCustomEvent(field, 'phoneFormatSetup', { 
+                countrySelector: countrySelector 
+            });
+        },
+
+        // Find the country code selector for a phone field
+        findCountryCodeSelector: function(phoneField) {
+            const form = phoneField.closest('form');
+            if (!form) return null;
+            
+            // Look for country code selectors in the same form
+            // First check for searchable country selects
+            let countrySelector = form.querySelector('.wf-country-search');
+            if (countrySelector) return countrySelector;
+            
+            // Then check for standard country selects
+            countrySelector = form.querySelector('select[data-country-code="true"]');
+            if (countrySelector) return countrySelector;
+            
+            // Check by data attribute reference
+            const countryFieldRef = phoneField.dataset.phoneCountryField;
+            if (countryFieldRef) {
+                return form.querySelector(countryFieldRef);
+            }
+            
+            return null;
+        },
+
+        // Update phone field formatting based on selected country
+        updatePhoneFormat: function(phoneField, countrySelector) {
+            let selectedDialingCode = '';
+            
+            // Get selected country dialing code
+            if (countrySelector.tagName === 'SELECT') {
+                const selectedOption = countrySelector.options[countrySelector.selectedIndex];
+                selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
+            } else if (countrySelector.classList.contains('wf-country-search')) {
+                // For searchable selects, get from hidden select
+                const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
+                if (hiddenSelect && hiddenSelect.selectedIndex > 0) {
+                    const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
+                    selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
+                }
+            }
+            
+            // Convert dialing code to ISO country code for libphonenumber
+            const countryCode = this.getCountryFromDialingCode(selectedDialingCode);
+            
+            // Get example phone number for placeholder
+            const exampleNumber = this.getExamplePhoneNumber(countryCode);
+            
+            // Update placeholder
+            if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
+                phoneField.placeholder = exampleNumber;
+            }
+            
+            // Store current format info on field
+            phoneField._currentCountryCode = countryCode;
+            phoneField._currentDialingCode = selectedDialingCode;
+            phoneField._asYouType = countryCode ? new AsYouType(countryCode) : new AsYouType();
+            
+            // Remove existing phone formatting listeners
+            if (phoneField._phoneFormatHandler) {
+                phoneField.removeEventListener('input', phoneField._phoneFormatHandler);
+            }
+            
+            // Add new formatting listener
+            phoneField._phoneFormatHandler = (e) => {
+                this.formatPhoneInputWithLibphonenumber(phoneField);
+            };
+            
+            phoneField.addEventListener('input', phoneField._phoneFormatHandler);
+            
+            // Format current value if it exists
+            if (phoneField.value) {
+                this.formatPhoneInputWithLibphonenumber(phoneField);
+            }
+            
+            this.triggerCustomEvent(phoneField, 'phoneFormatChanged', {
+                countryCode: countryCode,
+                dialingCode: selectedDialingCode,
+                placeholder: exampleNumber
+            });
+        },
+
+        // Format phone input using libphonenumber
+        formatPhoneInputWithLibphonenumber: function(field) {
+            const currentValue = field.value;
+            const cursorPos = field.selectionStart;
+            
+            // Reset the AsYouType formatter for fresh formatting
+            if (field._currentCountryCode) {
+                field._asYouType = new AsYouType(field._currentCountryCode);
+            } else {
+                field._asYouType = new AsYouType();
+            }
+            
+            // Remove all non-digit characters for processing
+            const digitsOnly = currentValue.replace(/\D/g, '');
+            
+            // Format using AsYouType
+            let formattedValue = '';
+            for (let i = 0; i < digitsOnly.length; i++) {
+                formattedValue = field._asYouType.input(digitsOnly[i]);
+            }
+            
+            // Update field value if changed
+            if (field.value !== formattedValue) {
+                const oldLength = field.value.length;
+                field.value = formattedValue;
+                
+                // Restore cursor position accounting for formatting changes
+                const newLength = formattedValue.length;
+                const lengthDiff = newLength - oldLength;
+                const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formattedValue.length));
+                
+                // Set cursor position after a brief delay to ensure it takes effect
+                setTimeout(() => {
+                    field.setSelectionRange(newCursorPos, newCursorPos);
+                }, 0);
+                
+                this.triggerCustomEvent(field, 'phoneFormatted', {
+                    countryCode: field._currentCountryCode,
+                    dialingCode: field._currentDialingCode,
+                    rawValue: digitsOnly,
+                    formattedValue: formattedValue
+                });
+            }
         },
 
         // Handle field syncing (sync values between fields)
