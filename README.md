@@ -83,6 +83,11 @@ The library only enhances fields that have specific data attributes. Fields with
 | `data-sync-type` | Input/Textarea | `"copy"`, `"uppercase"`, `"lowercase"` | How to transform synced value | `data-sync-type="uppercase"` |
 | `data-input-mask` | Input | Mask pattern | Apply input masking (extensible) | `data-input-mask="(000) 000-0000"` |
 | `data-auto-complete` | Input | Custom type | Enhanced autocomplete behavior | `data-auto-complete="company-names"` |
+| `data-country-code` | Select | `"true"` | Populates select with country options | `<select data-country-code="true">` |
+| `data-country-format` | Select | `"flag-name-code"`, `"flag-name"`, `"name-code"`, `"name"`, `"code"` | How to display countries in options | `data-country-format="flag-name"` |
+| `data-country-value` | Select | `"code"`, `"name"`, `"full"` | What value to store when selected | `data-country-value="name"` |
+| `data-country-sort-by` | Select | `"name"`, `"code"` | How to sort country list | `data-country-sort-by="name"` |
+| `data-country-searchable` | Select | `"true"`, `"false"` | Enable/disable search functionality (default: true) | `data-country-searchable="false"` |
 
 ### Common Combinations
 
@@ -94,6 +99,7 @@ The library only enhances fields that have specific data attributes. Fields with
 | **Real-time Validation** | `data-custom-validation` + `data-validate-on-input` | `<input data-custom-validation="^\d{4}$" data-validate-on-input="true">` |
 | **Field Syncing** | `data-field-sync` + `data-sync-type` | `<input data-field-sync="#display" data-sync-type="uppercase">` |
 | **Advanced Counter** | `data-character-counter` + `data-counter-format` | `<textarea data-character-counter="true" data-counter-format="Words: {current}/{max}">` |
+| **Country Select** | `data-country-code` + `data-country-format` | `<select data-country-code="true" data-country-format="flag-name">` |
 
 ## Data Attributes for Enhanced Behaviors
 
@@ -193,6 +199,60 @@ The library only enhances fields that have specific data attributes. Fields with
 <input type="text" id="display-name" readonly>
 ```
 
+### Country Code Selects
+
+Automatically populate select fields with countries including flags, names, and dialing codes. **By default, creates a searchable dropdown** where users can type to filter countries.
+
+```html
+<!-- Basic searchable country select (shows: 🇺🇸 United States (+1)) -->
+<select name="country" data-country-code="true">
+  <option value="" disabled>Select Country</option>
+</select>
+<!-- Creates searchable input where users can type "United" or "US" to filter -->
+
+<!-- Disable search functionality (standard dropdown) -->
+<select data-country-code="true" data-country-searchable="false">
+  <option value="" disabled>Select Country</option>
+</select>
+
+<!-- Custom display format -->
+<select data-country-code="true" data-country-format="flag-name">
+  <!-- Shows: 🇺🇸 United States -->
+</select>
+
+<select data-country-code="true" data-country-format="name-code">
+  <!-- Shows: United States (+1) -->
+</select>
+
+<!-- Store country name instead of code -->
+<select data-country-code="true" data-country-value="name">
+  <!-- Value will be "United States" instead of "+1" -->
+</select>
+
+<!-- Sort by country code instead of name -->
+<select data-country-code="true" data-country-sort-by="code">
+  <!-- Countries sorted by dialing code -->
+</select>
+```
+
+#### **Search Functionality (Default)**
+- ✨ **Type to filter**: Users can type country names or codes to narrow options
+- ⌨️ **Keyboard navigation**: Arrow keys to navigate, Enter to select, Escape to close
+- 🎯 **Smart matching**: Searches both country names and dialing codes
+- ♿ **Accessible**: Maintains form submission compatibility and screen reader support
+
+**Available Formats:**
+- `flag-name-code` (default): 🇺🇸 United States (+1)
+- `flag-name`: 🇺🇸 United States  
+- `name-code`: United States (+1)
+- `name`: United States
+- `code`: +1
+
+**Value Options:**
+- `code` (default): Stores the dialing code (+1)
+- `name`: Stores the country name (United States)
+- `full`: Stores both (United States (+1))
+
 ### Disable Enhancement
 
 ```html
@@ -236,6 +296,37 @@ The library only enhances fields that have specific data attributes. Fields with
 
 .wf-counter-danger {
     color: #ef4444;
+}
+
+/* Country select components */
+.wf-country-select-container {
+    position: relative;
+    width: 100%;
+}
+
+.wf-country-search {
+    /* Inherits styling from original select field */
+}
+
+.wf-country-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.wf-country-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.wf-country-option:hover,
+.wf-country-option.highlighted {
+    background-color: #f5f5f5;
 }
 ```
 

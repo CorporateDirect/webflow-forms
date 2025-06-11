@@ -7,6 +7,9 @@
  * @license MIT
  */
 
+// Import country codes from separate file
+import countryCodes from './countryList.js';
+
 (function(window, document) {
     'use strict';
 
@@ -21,6 +24,9 @@
             focusClass: 'wf-field-focus',
             typingClass: 'wf-field-typing'
         },
+
+        // Country codes data
+        countryCodes: countryCodes,
 
         // Initialize the library
         init: function(options = {}) {
@@ -72,7 +78,7 @@
         fieldHasEnhancements: function(field) {
             const enhancementAttributes = [
                 'format', 'characterCounter', 'autoResize', 'showsField', 'hidesField',
-                'customValidation', 'inputMask', 'autoComplete', 'fieldSync'
+                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode'
             ];
             
             return enhancementAttributes.some(attr => 
@@ -150,6 +156,11 @@
             // Auto-complete enhancements
             if (field.dataset.autoComplete) {
                 this.setupAutoComplete(field);
+            }
+            
+            // Country code selector
+            if (field.dataset.countryCode === 'true' && field.tagName === 'SELECT') {
+                this.setupCountryCodeSelect(field);
             }
         },
 
@@ -382,6 +393,358 @@
             const autoCompleteType = field.dataset.autoComplete;
             // Enhanced autocomplete beyond browser defaults
             this.triggerCustomEvent(field, 'autoCompleteSetup', { type: autoCompleteType });
+        },
+
+        // Setup country code select field
+        setupCountryCodeSelect: function(field) {
+            // Check if searchable option is enabled
+            const isSearchable = field.dataset.countrySearchable !== 'false'; // Default to true
+            
+            if (isSearchable) {
+                this.createSearchableCountrySelect(field);
+            } else {
+                this.createStandardCountrySelect(field);
+            }
+        },
+
+        // Create standard (non-searchable) country select
+        createStandardCountrySelect: function(field) {
+            // Clear existing options except placeholder
+            const existingOptions = field.querySelectorAll('option');
+            const placeholderOption = existingOptions[0];
+            
+            // Clear all options
+            field.innerHTML = '';
+            
+            // Re-add placeholder if it existed
+            if (placeholderOption && (placeholderOption.value === '' || placeholderOption.textContent.trim() === '' || placeholderOption.hasAttribute('disabled'))) {
+                field.appendChild(placeholderOption);
+            }
+            
+            this.populateCountryOptions(field);
+        },
+
+        // Create searchable country select
+        createSearchableCountrySelect: function(field) {
+            // Store original field properties
+            const fieldName = field.name;
+            const fieldId = field.id;
+            const fieldClass = field.className;
+            const isRequired = field.required;
+            const placeholder = field.querySelector('option[disabled]')?.textContent || 'Select Country';
+            
+            // Create container for custom dropdown
+            const container = document.createElement('div');
+            container.className = 'wf-country-select-container';
+            container.style.position = 'relative';
+            container.style.width = '100%';
+            
+            // Create search input
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = fieldClass + ' wf-country-search';
+            searchInput.placeholder = placeholder;
+            searchInput.autocomplete = 'off';
+            if (fieldId) searchInput.id = fieldId + '_search';
+            
+            // Create hidden select for form submission
+            const hiddenSelect = document.createElement('select');
+            hiddenSelect.name = fieldName;
+            hiddenSelect.required = isRequired;
+            hiddenSelect.style.display = 'none';
+            if (fieldId) hiddenSelect.id = fieldId;
+            
+            // Create dropdown list
+            const dropdownList = document.createElement('div');
+            dropdownList.className = 'wf-country-dropdown';
+            dropdownList.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ccc;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            `;
+            
+            // Insert container before original field
+            field.parentNode.insertBefore(container, field);
+            
+            // Add elements to container
+            container.appendChild(searchInput);
+            container.appendChild(hiddenSelect);
+            container.appendChild(dropdownList);
+            
+            // Remove original field
+            field.remove();
+            
+            // Get countries data
+            const countries = this.getFormattedCountries(field);
+            
+            // Populate dropdown options
+            this.populateSearchableDropdown(dropdownList, hiddenSelect, searchInput, countries, field);
+            
+            // Add event listeners
+            this.attachSearchableEvents(searchInput, dropdownList, hiddenSelect, countries, field);
+            
+            // Trigger custom event
+            this.triggerCustomEvent(searchInput, 'countryCodeSetup', { 
+                searchable: true,
+                countriesCount: countries.length 
+            });
+        },
+
+        // Get formatted countries data
+        getFormattedCountries: function(field) {
+            const displayFormat = field.dataset.countryFormat || 'flag-name-code';
+            const sortBy = field.dataset.countrySortBy || 'name';
+            const valueType = field.dataset.countryValue || 'code';
+            
+            // Sort countries
+            let sortedCountries = [...this.countryCodes];
+            if (sortBy === 'name') {
+                sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortBy === 'code') {
+                sortedCountries.sort((a, b) => a.countryCode.localeCompare(b.countryCode));
+            }
+            
+            return sortedCountries.map(country => {
+                let displayText;
+                switch (displayFormat) {
+                    case 'flag-name':
+                        displayText = `${country.flag} ${country.name}`;
+                        break;
+                    case 'name-code':
+                        displayText = `${country.name} (${country.countryCode})`;
+                        break;
+                    case 'name':
+                        displayText = country.name;
+                        break;
+                    case 'code':
+                        displayText = country.countryCode;
+                        break;
+                    case 'flag-name-code':
+                    default:
+                        displayText = `${country.flag} ${country.name} (${country.countryCode})`;
+                        break;
+                }
+                
+                let value;
+                switch (valueType) {
+                    case 'name':
+                        value = country.name;
+                        break;
+                    case 'full':
+                        value = `${country.name} (${country.countryCode})`;
+                        break;
+                    case 'code':
+                    default:
+                        value = country.countryCode;
+                        break;
+                }
+                
+                return {
+                    ...country,
+                    displayText,
+                    value,
+                    searchText: `${country.name} ${country.countryCode}`.toLowerCase()
+                };
+            });
+        },
+
+        // Populate searchable dropdown
+        populateSearchableDropdown: function(dropdownList, hiddenSelect, searchInput, countries, originalField) {
+            dropdownList.innerHTML = '';
+            hiddenSelect.innerHTML = '<option value=""></option>';
+            
+            countries.forEach(country => {
+                // Create dropdown option
+                const option = document.createElement('div');
+                option.className = 'wf-country-option';
+                option.textContent = country.displayText;
+                option.style.cssText = `
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #eee;
+                `;
+                option.dataset.value = country.value;
+                option.dataset.countryName = country.name;
+                option.dataset.countryCode = country.countryCode;
+                option.dataset.countryFlag = country.flag;
+                
+                // Add hover effects
+                option.addEventListener('mouseenter', () => {
+                    option.style.backgroundColor = '#f5f5f5';
+                });
+                option.addEventListener('mouseleave', () => {
+                    option.style.backgroundColor = 'white';
+                });
+                
+                // Add click handler
+                option.addEventListener('click', () => {
+                    this.selectCountryOption(option, searchInput, hiddenSelect, dropdownList, originalField);
+                });
+                
+                dropdownList.appendChild(option);
+                
+                // Create hidden select option
+                const selectOption = document.createElement('option');
+                selectOption.value = country.value;
+                selectOption.textContent = country.displayText;
+                selectOption.dataset.countryName = country.name;
+                selectOption.dataset.countryCode = country.countryCode;
+                selectOption.dataset.countryFlag = country.flag;
+                hiddenSelect.appendChild(selectOption);
+            });
+        },
+
+        // Attach searchable events
+        attachSearchableEvents: function(searchInput, dropdownList, hiddenSelect, countries, originalField) {
+            // Show/hide dropdown on focus/blur
+            searchInput.addEventListener('focus', () => {
+                dropdownList.style.display = 'block';
+                this.filterCountryOptions(searchInput.value, dropdownList, countries);
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !dropdownList.contains(e.target)) {
+                    dropdownList.style.display = 'none';
+                }
+            });
+            
+            // Filter options as user types
+            searchInput.addEventListener('input', () => {
+                this.filterCountryOptions(searchInput.value, dropdownList, countries);
+                dropdownList.style.display = 'block';
+                
+                // Clear selection if input doesn't match
+                if (hiddenSelect.value && !searchInput.value) {
+                    hiddenSelect.value = '';
+                    this.triggerCustomEvent(searchInput, 'countrySelectionCleared');
+                }
+            });
+            
+            // Handle keyboard navigation
+            searchInput.addEventListener('keydown', (e) => {
+                this.handleCountryKeyboardNavigation(e, dropdownList, searchInput, hiddenSelect, originalField);
+            });
+        },
+
+        // Filter country options based on search
+        filterCountryOptions: function(searchTerm, dropdownList, countries) {
+            const options = dropdownList.querySelectorAll('.wf-country-option');
+            const search = searchTerm.toLowerCase();
+            
+            options.forEach((option, index) => {
+                const country = countries[index];
+                const matches = country.searchText.includes(search);
+                option.style.display = matches ? 'block' : 'none';
+            });
+        },
+
+        // Handle keyboard navigation
+        handleCountryKeyboardNavigation: function(e, dropdownList, searchInput, hiddenSelect, originalField) {
+            const visibleOptions = Array.from(dropdownList.querySelectorAll('.wf-country-option'))
+                .filter(option => option.style.display !== 'none');
+            
+            let currentIndex = visibleOptions.findIndex(option => 
+                option.style.backgroundColor === 'rgb(245, 245, 245)' || option.classList.contains('highlighted')
+            );
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    currentIndex = Math.min(currentIndex + 1, visibleOptions.length - 1);
+                    this.highlightCountryOption(visibleOptions, currentIndex);
+                    dropdownList.style.display = 'block';
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    currentIndex = Math.max(currentIndex - 1, 0);
+                    this.highlightCountryOption(visibleOptions, currentIndex);
+                    break;
+                    
+                case 'Enter':
+                    e.preventDefault();
+                    if (currentIndex >= 0 && visibleOptions[currentIndex]) {
+                        this.selectCountryOption(visibleOptions[currentIndex], searchInput, hiddenSelect, dropdownList, originalField);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    dropdownList.style.display = 'none';
+                    searchInput.blur();
+                    break;
+            }
+        },
+
+        // Highlight option during keyboard navigation
+        highlightCountryOption: function(options, index) {
+            options.forEach((option, i) => {
+                if (i === index) {
+                    option.style.backgroundColor = '#f5f5f5';
+                    option.classList.add('highlighted');
+                    option.scrollIntoView({ block: 'nearest' });
+                } else {
+                    option.style.backgroundColor = 'white';
+                    option.classList.remove('highlighted');
+                }
+            });
+        },
+
+        // Select country option
+        selectCountryOption: function(option, searchInput, hiddenSelect, dropdownList, originalField) {
+            const value = option.dataset.value;
+            const displayText = option.textContent;
+            
+            // Update inputs
+            searchInput.value = displayText;
+            hiddenSelect.value = value;
+            
+            // Hide dropdown
+            dropdownList.style.display = 'none';
+            
+            // Trigger events
+            this.triggerCustomEvent(searchInput, 'countrySelected', {
+                value: value,
+                name: option.dataset.countryName,
+                code: option.dataset.countryCode,
+                flag: option.dataset.countryFlag,
+                displayText: displayText
+            });
+            
+            // Trigger change event on hidden select for form handling
+            const changeEvent = new Event('change', { bubbles: true });
+            hiddenSelect.dispatchEvent(changeEvent);
+        },
+
+        // Populate standard country options (for non-searchable)
+        populateCountryOptions: function(field) {
+            const countries = this.getFormattedCountries(field);
+            
+            countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country.value;
+                option.textContent = country.displayText;
+                option.dataset.countryName = country.name;
+                option.dataset.countryCode = country.countryCode;
+                option.dataset.countryFlag = country.flag;
+                
+                field.appendChild(option);
+            });
+            
+            // Trigger custom event
+            this.triggerCustomEvent(field, 'countryCodeSetup', { 
+                searchable: false,
+                countriesCount: countries.length 
+            });
         },
 
         // Handle field syncing (sync values between fields)
