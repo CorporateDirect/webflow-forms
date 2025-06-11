@@ -18,7 +18,7 @@ Enhanced form functionality for Webflow sites with validation, loading states, a
 Add this script tag to your Webflow site's custom code (before `</body>`):
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/yourusername/webflow-forms@latest/dist/webflow-forms.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
 ### Via NPM
@@ -34,7 +34,7 @@ npm install webflow-forms
 The library automatically enhances all Webflow forms on your page. Just include the script and it works!
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/yourusername/webflow-forms@latest/dist/webflow-forms.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
 ### Manual Initialization
