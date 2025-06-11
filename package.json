@@ -1,6 +1,6 @@
 {
   "name": "webflow-forms",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A JavaScript library for enhanced webflow form functionality",
   "main": "dist/webflow-forms.min.js",
   "jsdelivr": "dist/webflow-forms.min.js",
