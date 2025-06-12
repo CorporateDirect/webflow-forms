@@ -888,6 +888,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const isRequired = field.required;
             const placeholder = field.querySelector('option[disabled]')?.textContent || 'Select Country';
             
+            // Create container for proper dropdown positioning (but without problematic styling)
+            const container = document.createElement('div');
+            // Use data attribute instead of class for identification
+            container.dataset.countrySelectContainer = 'true';
+            // Only add positioning - no width or other layout styles
+            container.style.position = 'relative';
+            
             // Create search input to replace the original field
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
@@ -925,17 +932,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             `;
             
-            // Get the parent container
-            const parentContainer = field.parentNode;
+            // Insert container before original field
+            field.parentNode.insertBefore(container, field);
             
-            // Insert search input to replace original field
-            parentContainer.insertBefore(searchInput, field);
-            
-            // Insert hidden select after search input
-            parentContainer.insertBefore(hiddenSelect, searchInput.nextSibling);
-            
-            // Insert dropdown after hidden select
-            parentContainer.insertBefore(dropdownList, hiddenSelect.nextSibling);
+            // Add elements to container
+            container.appendChild(searchInput);
+            container.appendChild(hiddenSelect);
+            container.appendChild(dropdownList);
             
             // Remove original field
             field.remove();
@@ -1086,7 +1089,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Hide dropdown when clicking outside
             document.addEventListener('click', (e) => {
-                if (e.target !== searchInput && !dropdownList.contains(e.target)) {
+                if (!searchInput.contains(e.target) && !dropdownList.contains(e.target)) {
                     dropdownList.style.display = 'none';
                 }
             });
