@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Production builds
-dist/
+# dist/ - commented out so built files can be committed for CDN usage
 
 # Environment variables
 .env
