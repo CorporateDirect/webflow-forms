@@ -888,16 +888,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const isRequired = field.required;
             const placeholder = field.querySelector('option[disabled]')?.textContent || 'Select Country';
             
-            // Create container for custom dropdown
-            const container = document.createElement('div');
-            container.className = 'wf-country-select-container';
-            container.style.position = 'relative';
-            container.style.width = '100%';
-            
-            // Create search input
+            // Create search input to replace the original field
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
-            searchInput.className = fieldClass; // Keep original classes only, no wf-country-search
+            searchInput.className = fieldClass; // Keep original classes only
             searchInput.placeholder = placeholder;
             searchInput.autocomplete = 'off';
             if (fieldId) searchInput.id = fieldId + '_search';
@@ -914,7 +908,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Create dropdown list
             const dropdownList = document.createElement('div');
-            dropdownList.className = 'wf-country-dropdown';
+            // Use data attribute instead of class for identification
+            dropdownList.dataset.countryDropdown = 'true';
             // Minimal styling - let Webflow handle the rest
             dropdownList.style.cssText = `
                 position: absolute;
@@ -930,13 +925,17 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             `;
             
-            // Insert container before original field
-            field.parentNode.insertBefore(container, field);
+            // Get the parent container
+            const parentContainer = field.parentNode;
             
-            // Add elements to container
-            container.appendChild(searchInput);
-            container.appendChild(hiddenSelect);
-            container.appendChild(dropdownList);
+            // Insert search input to replace original field
+            parentContainer.insertBefore(searchInput, field);
+            
+            // Insert hidden select after search input
+            parentContainer.insertBefore(hiddenSelect, searchInput.nextSibling);
+            
+            // Insert dropdown after hidden select
+            parentContainer.insertBefore(dropdownList, hiddenSelect.nextSibling);
             
             // Remove original field
             field.remove();
@@ -1038,7 +1037,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             countries.forEach(country => {
                 // Create dropdown option
                 const option = document.createElement('div');
-                option.className = 'wf-country-option';
+                // Use data attribute instead of class for identification
+                option.dataset.countryOption = 'true';
                 option.textContent = country.displayText;
                 // Minimal styling - let Webflow handle the rest
                 option.style.cssText = `
@@ -1086,7 +1086,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Hide dropdown when clicking outside
             document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !dropdownList.contains(e.target)) {
+                if (e.target !== searchInput && !dropdownList.contains(e.target)) {
                     dropdownList.style.display = 'none';
                 }
             });
@@ -1111,7 +1111,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Filter country options based on search
         filterCountryOptions: function(searchTerm, dropdownList, countries) {
-            const options = dropdownList.querySelectorAll('.wf-country-option');
+            const options = dropdownList.querySelectorAll('[data-country-option="true"]');
             const search = searchTerm.toLowerCase();
             
             options.forEach((option, index) => {
@@ -1123,7 +1123,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Handle keyboard navigation
         handleCountryKeyboardNavigation: function(e, dropdownList, searchInput, hiddenSelect, originalField) {
-            const visibleOptions = Array.from(dropdownList.querySelectorAll('.wf-country-option'))
+            const visibleOptions = Array.from(dropdownList.querySelectorAll('[data-country-option="true"]'))
                 .filter(option => option.style.display !== 'none');
             
             let currentIndex = visibleOptions.findIndex(option => 
