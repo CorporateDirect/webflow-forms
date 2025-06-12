@@ -119,7 +119,6 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     'KZ': 'Kazakhstan',
                     'UZ': 'Uzbekistan',
                     'NZ': 'New Zealand',
-                    // Additional countries to cover more ISO codes
                     'EH': 'Western Sahara',
                     'DZ': 'Algeria',
                     'LY': 'Libya',
@@ -313,7 +312,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                             flag: this.getCountryFlag(countryCode) // Flag emoji
                         });
                     } catch (error) {
-                        // Skip countries that cause errors
+                        // Log which country caused the error and skip it
+                        console.warn(`Country ${countryCode} caused an error and was skipped:`, error);
                         continue;
                     }
                 }
