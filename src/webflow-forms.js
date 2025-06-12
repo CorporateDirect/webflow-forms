@@ -29,7 +29,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         phoneFormatCache: new Map(),
         countryDataCache: null,
 
-        // Generate country data from libphonenumber (clean, no emoji flags)
+        // Generate country data from libphonenumber with proper country names
         getCountryCodes: function() {
             // Return cached data if available
             if (this.countryDataCache) {
@@ -40,13 +40,83 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const countries = getCountries();
                 const countryData = [];
 
+                // Country name mapping for better display
+                const countryNames = {
+                    'US': 'United States',
+                    'GB': 'United Kingdom',
+                    'CA': 'Canada',
+                    'AU': 'Australia',
+                    'DE': 'Germany',
+                    'FR': 'France',
+                    'IT': 'Italy',
+                    'ES': 'Spain',
+                    'NL': 'Netherlands',
+                    'BE': 'Belgium',
+                    'CH': 'Switzerland',
+                    'AT': 'Austria',
+                    'SE': 'Sweden',
+                    'NO': 'Norway',
+                    'DK': 'Denmark',
+                    'FI': 'Finland',
+                    'IE': 'Ireland',
+                    'PT': 'Portugal',
+                    'GR': 'Greece',
+                    'PL': 'Poland',
+                    'CZ': 'Czech Republic',
+                    'HU': 'Hungary',
+                    'RO': 'Romania',
+                    'BG': 'Bulgaria',
+                    'HR': 'Croatia',
+                    'SI': 'Slovenia',
+                    'SK': 'Slovakia',
+                    'LT': 'Lithuania',
+                    'LV': 'Latvia',
+                    'EE': 'Estonia',
+                    'JP': 'Japan',
+                    'KR': 'South Korea',
+                    'CN': 'China',
+                    'IN': 'India',
+                    'SG': 'Singapore',
+                    'HK': 'Hong Kong',
+                    'TW': 'Taiwan',
+                    'TH': 'Thailand',
+                    'MY': 'Malaysia',
+                    'ID': 'Indonesia',
+                    'PH': 'Philippines',
+                    'VN': 'Vietnam',
+                    'BR': 'Brazil',
+                    'MX': 'Mexico',
+                    'AR': 'Argentina',
+                    'CL': 'Chile',
+                    'CO': 'Colombia',
+                    'PE': 'Peru',
+                    'VE': 'Venezuela',
+                    'ZA': 'South Africa',
+                    'EG': 'Egypt',
+                    'NG': 'Nigeria',
+                    'KE': 'Kenya',
+                    'MA': 'Morocco',
+                    'TN': 'Tunisia',
+                    'IL': 'Israel',
+                    'AE': 'United Arab Emirates',
+                    'SA': 'Saudi Arabia',
+                    'TR': 'Turkey',
+                    'RU': 'Russia',
+                    'UA': 'Ukraine',
+                    'BY': 'Belarus',
+                    'KZ': 'Kazakhstan',
+                    'UZ': 'Uzbekistan',
+                    'NZ': 'New Zealand'
+                };
+
                 for (const countryCode of countries) {
                     try {
                         const callingCode = getCountryCallingCode(countryCode);
                         
                         countryData.push({
-                            name: countryCode, // Use ISO code as name (e.g., "US", "GB", "FR")
+                            name: countryNames[countryCode] || countryCode, // Use proper name or fall back to ISO code
                             countryCode: `+${callingCode}`, // Dialing code (e.g., "+1", "+44", "+33")
+                            isoCode: countryCode, // Keep ISO code for reference
                             flag: '' // No flag emoji
                         });
                     } catch (error) {
@@ -63,8 +133,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.warn('Could not generate country data from libphonenumber:', error);
                 // Fallback to minimal data
                 return [
-                    { name: 'US', countryCode: '+1', flag: '' },
-                    { name: 'GB', countryCode: '+44', flag: '' }
+                    { name: 'United States', countryCode: '+1', isoCode: 'US', flag: '' },
+                    { name: 'United Kingdom', countryCode: '+44', isoCode: 'GB', flag: '' }
                 ];
             }
         },
@@ -602,12 +672,30 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Get countries from libphonenumber
             const countries = this.getCountryCodes();
             
-            // Sort countries
+            // Sort countries with United States first
             let sortedCountries = [...countries];
-            if (sortBy === 'name') {
-                sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
-            } else if (sortBy === 'code') {
-                sortedCountries.sort((a, b) => a.countryCode.localeCompare(b.countryCode));
+            
+            // Always put United States first
+            const usIndex = sortedCountries.findIndex(country => country.isoCode === 'US');
+            if (usIndex > -1) {
+                const usCountry = sortedCountries.splice(usIndex, 1)[0];
+                
+                // Sort the remaining countries
+                if (sortBy === 'name') {
+                    sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
+                } else if (sortBy === 'code') {
+                    sortedCountries.sort((a, b) => a.countryCode.localeCompare(b.countryCode));
+                }
+                
+                // Put US at the beginning
+                sortedCountries.unshift(usCountry);
+            } else {
+                // If US not found, just sort normally
+                if (sortBy === 'name') {
+                    sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
+                } else if (sortBy === 'code') {
+                    sortedCountries.sort((a, b) => a.countryCode.localeCompare(b.countryCode));
+                }
             }
             
             return sortedCountries.map(country => {
