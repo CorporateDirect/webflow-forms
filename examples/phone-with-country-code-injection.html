@@ -109,6 +109,15 @@
         .wf-country-option:last-child {
             border-bottom: none;
         }
+        .debug-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -134,6 +143,10 @@
             <div class="form-group">
                 <label for="phone">Phone Number</label>
                 <input type="tel" id="phone" name="phone" data-phone-format="" placeholder="Phone number will appear here">
+                <div class="debug-info" id="phone-debug">
+                    Field value: <span id="phone-value">""</span><br>
+                    Placeholder: <span id="phone-placeholder">""</span>
+                </div>
             </div>
 
             <div class="form-group">
@@ -158,6 +171,8 @@
             
             // Add event listeners to log events
             const eventsLog = document.getElementById('events-log');
+            const phoneDebugValue = document.getElementById('phone-value');
+            const phoneDebugPlaceholder = document.getElementById('phone-placeholder');
             
             function logEvent(eventName, detail) {
                 const eventItem = document.createElement('div');
@@ -174,43 +189,68 @@
                 }
             }
 
+            function updateDebugInfo() {
+                const phoneField = document.getElementById('phone');
+                phoneDebugValue.textContent = JSON.stringify(phoneField.value);
+                phoneDebugPlaceholder.textContent = JSON.stringify(phoneField.placeholder);
+            }
+
             // Listen for phone format events
             document.addEventListener('webflowField:phoneFormatChanged', (e) => {
+                console.log('phoneFormatChanged event:', e.detail);
                 logEvent('phoneFormatChanged', {
                     countryCode: e.detail.countryCode,
                     dialingCode: e.detail.dialingCode,
                     phoneType: e.detail.phoneType
                 });
+                updateDebugInfo();
             });
 
             document.addEventListener('webflowField:phoneFormatted', (e) => {
+                console.log('phoneFormatted event:', e.detail);
                 logEvent('phoneFormatted', {
                     countryCode: e.detail.countryCode,
                     dialingCode: e.detail.dialingCode,
                     rawValue: e.detail.rawValue,
                     formattedValue: e.detail.formattedValue
                 });
+                updateDebugInfo();
             });
 
             document.addEventListener('webflowField:countryCodeChanged', (e) => {
+                console.log('countryCodeChanged event:', e.detail);
                 logEvent('countryCodeChanged', {
                     selectedCountry: e.detail.selectedCountry,
                     countryCode: e.detail.countryCode,
                     dialingCode: e.detail.dialingCode
                 });
+                updateDebugInfo();
             });
 
             // Monitor phone field value changes
             const phoneField = document.getElementById('phone');
             phoneField.addEventListener('input', function() {
-                console.log('Phone field value:', this.value);
+                console.log('Phone field value changed:', this.value);
+                updateDebugInfo();
             });
 
             // Monitor country changes
             const countryField = document.getElementById('country');
             countryField.addEventListener('change', function() {
                 console.log('Country changed to:', this.value);
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption) {
+                    console.log('Selected option data:', {
+                        value: selectedOption.value,
+                        countryCode: selectedOption.dataset.countryCode,
+                        countryName: selectedOption.dataset.countryName
+                    });
+                }
+                updateDebugInfo();
             });
+
+            // Initial debug info update
+            setTimeout(updateDebugInfo, 100);
         });
     </script>
 </body>

@@ -1316,7 +1316,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Update placeholder to show country code + line break + example
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
-                const countryCodePrefix = selectedDialingCode ? `+${selectedDialingCode.replace('+', '')}\n` : '';
+                let cleanDialingCode = selectedDialingCode;
+                if (cleanDialingCode && !cleanDialingCode.startsWith('+')) {
+                    cleanDialingCode = '+' + cleanDialingCode;
+                }
+                const countryCodePrefix = cleanDialingCode ? cleanDialingCode + '\n' : '';
                 phoneField.placeholder = countryCodePrefix + exampleNumber;
             }
             
@@ -1358,14 +1362,26 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Inject country code into phone field
         injectCountryCodeIntoPhoneField: function(field, dialingCode) {
-            const countryCodePrefix = `+${dialingCode.replace('+', '')}\n`;
+            // Ensure dialingCode starts with + and is properly formatted
+            let cleanDialingCode = dialingCode;
+            if (!cleanDialingCode.startsWith('+')) {
+                cleanDialingCode = '+' + cleanDialingCode;
+            }
+            
+            const countryCodePrefix = cleanDialingCode + '\n';
             const currentValue = field.value;
             
             // Check if country code is already present
-            if (!currentValue.startsWith(countryCodePrefix.trim())) {
+            if (!currentValue.startsWith(cleanDialingCode)) {
                 // Extract any existing phone number part (after a newline if present)
-                const existingPhonePart = currentValue.includes('\n') ? 
-                    currentValue.split('\n').slice(1).join('\n') : currentValue;
+                let existingPhonePart = '';
+                if (currentValue.includes('\n')) {
+                    // If there's already a newline, get everything after the first newline
+                    existingPhonePart = currentValue.split('\n').slice(1).join('\n');
+                } else if (currentValue && !currentValue.startsWith('+')) {
+                    // If there's existing content that doesn't start with +, preserve it
+                    existingPhonePart = currentValue;
+                }
                 
                 // Set the new value with country code + line break + existing phone part
                 field.value = countryCodePrefix + existingPhonePart;
