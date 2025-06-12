@@ -929,11 +929,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const dropdownList = document.createElement('div');
             // Use data attribute instead of class for identification
             dropdownList.dataset.countryDropdown = 'true';
-            // Minimal styling - let Webflow handle the rest
+            // Minimal styling - dropdown matches input width dynamically
             dropdownList.style.cssText = `
                 position: absolute;
                 top: 100%;
                 left: 0;
+                right: 0;
+                width: 100%;
                 background: white;
                 border: 1px solid #ccc;
                 border-top: none;
@@ -942,6 +944,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 z-index: 1000;
                 display: none;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                box-sizing: border-box;
             `;
             
             // Insert container before original field
@@ -1101,8 +1104,23 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Attach searchable events
         attachSearchableEvents: function(searchInput, dropdownList, hiddenSelect, countries, originalField) {
+            // Function to sync dropdown width with input
+            const syncDropdownWidth = () => {
+                // The dropdown uses width: 100% and is positioned relative to the container,
+                // so it automatically matches the input width. No additional action needed.
+            };
+            
+            // Watch for input size changes and sync dropdown width
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => {
+                    syncDropdownWidth();
+                });
+                resizeObserver.observe(searchInput);
+            }
+            
             // Show/hide dropdown on focus/blur
             searchInput.addEventListener('focus', () => {
+                syncDropdownWidth(); // Ensure width is synced when dropdown opens
                 dropdownList.style.display = 'block';
                 this.filterCountryOptions(searchInput.value, dropdownList, countries);
             });
