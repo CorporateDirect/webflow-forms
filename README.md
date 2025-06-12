@@ -34,6 +34,11 @@ Enhances form fields with functionality that Webflow doesn't provide natively, w
 ### Via JSDelivr CDN
 
 ```html
+<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@27cc5c4/dist/webflow-forms.min.js"></script>
+```
+
+**Note:** If the above URL doesn't work immediately, jsDelivr may need time to sync. You can also use:
+```html
 <script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
@@ -205,15 +210,32 @@ The library only enhances fields that have specific data attributes. Fields with
 
 ### Country Code Selects
 
-Automatically populate select fields with countries including flags, names, and dialing codes. **By default, creates a searchable dropdown** where users can type to filter countries.
+Automatically populate select fields with **all 245 countries** supported by libphonenumber, each with proper country names and dialing codes. **By default, creates a searchable dropdown** where users can type to filter countries.
+
+**Complete Country Coverage:**
+- ✅ **245 countries mapped** with proper names (no ISO codes like "EH" or "DZ")
+- 🇺🇸 **United States prioritized** - always appears first in the list
+- 🌍 **Format: "Country Name (+Code)"** - e.g., "United States (+1)", "United Kingdom (+44)"
+- 🔍 **Searchable by default** - users can type to filter countries
+- 📱 **Mobile-friendly** with keyboard navigation
 
 ```html
-<!-- Basic searchable country select (shows: US (+1)) -->
+<!-- Basic searchable country select (shows: United States (+1), United Kingdom (+44), etc.) -->
 <select name="country" data-country-code="true">
   <option value="" disabled>Select Country</option>
 </select>
-<!-- Creates searchable input where users can type "US" or "+1" to filter -->
+<!-- Creates searchable input where users can type "United" or "+44" to filter -->
+```
 
+#### **Search Functionality (Default)**
+- ✨ **Type to filter**: Users can type country names or codes to narrow options
+- ⌨️ **Keyboard navigation**: Arrow keys to navigate, Enter to select, Escape to close
+- 🎯 **Smart matching**: Searches both country names and dialing codes
+- ♿ **Accessible**: Maintains form submission compatibility and screen reader support
+
+#### **Configuration Options**
+
+```html
 <!-- Disable search functionality (standard dropdown) -->
 <select data-country-code="true" data-country-searchable="false">
   <option value="" disabled>Select Country</option>
@@ -221,7 +243,7 @@ Automatically populate select fields with countries including flags, names, and 
 
 <!-- Custom display format -->
 <select data-country-code="true" data-country-format="name">
-  <!-- Shows: US -->
+  <!-- Shows: United States -->
 </select>
 
 <select data-country-code="true" data-country-format="code">
@@ -233,27 +255,21 @@ Automatically populate select fields with countries including flags, names, and 
   <!-- Value will be "United States" instead of "+1" -->
 </select>
 
-<!-- Sort by country code instead of name -->
+<!-- Sort by country code instead of name (US still appears first) -->
 <select data-country-code="true" data-country-sort-by="code">
   <!-- Countries sorted by dialing code -->
 </select>
 ```
 
-#### **Search Functionality (Default)**
-- ✨ **Type to filter**: Users can type country names or codes to narrow options
-- ⌨️ **Keyboard navigation**: Arrow keys to navigate, Enter to select, Escape to close
-- 🎯 **Smart matching**: Searches both country names and dialing codes
-- ♿ **Accessible**: Maintains form submission compatibility and screen reader support
-
 **Available Formats:**
-- `name-code` (default): US (+1)
-- `name`: US
+- `name-code` (default): United States (+1)
+- `name`: United States
 - `code`: +1
 
 **Value Options:**
 - `code` (default): Stores the dialing code (+1)
-- `name`: Stores the ISO country code (US)
-- `full`: Stores both (US (+1))
+- `name`: Stores the country name (United States)
+- `full`: Stores both (United States (+1))
 
 ### Dynamic Phone Formatting
 
@@ -481,3 +497,39 @@ Each handles what it does best, with no conflicts or overlap!
 - Safari (latest)
 - Edge (latest)
 - IE11+ 
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Changelog
+
+### v1.1.0 (Latest)
+
+**🌍 Complete Country Coverage Update**
+- ✅ **All 245 countries mapped** with proper names (no more ISO codes like "EH" or "DZ")
+- 🇺🇸 **United States prioritized** - always appears first in country lists
+- 🌍 **Consistent format**: All countries display as "Country Name (+Code)"
+- 📝 **Examples**: "United States (+1)", "United Kingdom (+44)", "Western Sahara (+212)"
+
+**🔧 Enhanced Country Code Features**
+- 🔍 **Searchable by default** - users can type to filter countries
+- ⌨️ **Keyboard navigation** - arrow keys, enter, escape support
+- 📱 **Mobile-friendly** interface
+- ♿ **Accessibility** maintained for screen readers
+
+**📚 Documentation Updates**
+- 📖 **Comprehensive data attributes reference** with all 17+ attributes
+- 🎯 **Clear examples** for every feature
+- 🔗 **Common combinations** guide
+- 🎨 **CSS styling** reference
+
+**🚀 Technical Improvements**
+- 📦 **158KB built file** with libphonenumber integration
+- 🌐 **240+ countries** with accurate phone formatting
+- 🔄 **Dynamic phone formatting** based on country selection
+- ⚡ **Zero maintenance** - auto-updates with libphonenumber
+
+### Previous Versions
+- **v1.0.x**: Initial release with basic field enhancements
+- **v0.x**: Development versions 
