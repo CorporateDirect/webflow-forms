@@ -897,10 +897,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Create search input
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
-            searchInput.className = fieldClass + ' wf-country-search';
+            searchInput.className = fieldClass; // Keep original classes only, no wf-country-search
             searchInput.placeholder = placeholder;
             searchInput.autocomplete = 'off';
             if (fieldId) searchInput.id = fieldId + '_search';
+            
+            // Add a data attribute for identification instead of a class
+            searchInput.dataset.countrySearch = 'true';
             
             // Create hidden select for form submission
             const hiddenSelect = document.createElement('select');
@@ -912,11 +915,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Create dropdown list
             const dropdownList = document.createElement('div');
             dropdownList.className = 'wf-country-dropdown';
+            // Minimal styling - let Webflow handle the rest
             dropdownList.style.cssText = `
                 position: absolute;
                 top: 100%;
                 left: 0;
-                right: 0;
                 background: white;
                 border: 1px solid #ccc;
                 border-top: none;
@@ -1037,10 +1040,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const option = document.createElement('div');
                 option.className = 'wf-country-option';
                 option.textContent = country.displayText;
+                // Minimal styling - let Webflow handle the rest
                 option.style.cssText = `
                     padding: 8px 12px;
                     cursor: pointer;
-                    border-bottom: 1px solid #eee;
                 `;
                 option.dataset.value = country.value;
                 option.dataset.countryName = country.name;
@@ -1052,7 +1055,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     option.style.backgroundColor = '#f5f5f5';
                 });
                 option.addEventListener('mouseleave', () => {
-                    option.style.backgroundColor = 'white';
+                    option.style.backgroundColor = '';
                 });
                 
                 // Add click handler
@@ -1244,7 +1247,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Handle both standard select and searchable country selects
             if (countrySelector.tagName === 'SELECT') {
                 countrySelector.addEventListener('change', updateFormat);
-            } else if (countrySelector.classList.contains('wf-country-search')) {
+            } else if (countrySelector.dataset.countrySearch === 'true') {
                 // For searchable country selects, listen to the hidden select
                 const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
                 if (hiddenSelect) {
@@ -1272,7 +1275,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Look for country code selectors in the same form
             // First check for searchable country selects
-            let countrySelector = form.querySelector('.wf-country-search');
+            let countrySelector = form.querySelector('[data-country-search="true"]');
             if (countrySelector) return countrySelector;
             
             // Then check for standard country selects
@@ -1302,7 +1305,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
                 console.log('Standard select - selectedOption:', selectedOption);
                 console.log('Standard select - selectedDialingCode:', selectedDialingCode);
-            } else if (countrySelector.classList.contains('wf-country-search')) {
+            } else if (countrySelector.dataset.countrySearch === 'true') {
                 // For searchable selects, get from hidden select
                 const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
                 console.log('Searchable select - hiddenSelect:', hiddenSelect);

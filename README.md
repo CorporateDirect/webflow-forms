@@ -634,25 +634,14 @@ This provides the most user-friendly, accurate address input experience possible
     /* Inherits styling from original select field */
 }
 
+/* Country dropdown styling is handled automatically by the library */
+/* You can override these classes if needed for custom styling */
 .wf-country-dropdown {
-    position: absolute;
-    background: white;
-    border: 1px solid #ccc;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Dropdown positioning and basic styles are applied via JavaScript */
 }
 
 .wf-country-option {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-}
-
-.wf-country-option:hover,
-.wf-country-option.highlighted {
-    background-color: #f5f5f5;
+    /* Option styling is minimal to allow Webflow defaults */
 }
 ```
 
