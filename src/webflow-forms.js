@@ -512,7 +512,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         fieldHasEnhancements: function(field) {
             const enhancementAttributes = [
                 'format', 'characterCounter', 'autoResize', 'showsField', 'hidesField',
-                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode', 'phoneFormat', 'phoneType'
+                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode', 'phoneFormat', 'phoneType',
+                'googlePlaces', 'addressComponent', 'postalCode', 'stateName'
             ];
             
             return enhancementAttributes.some(attr => 
@@ -600,6 +601,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Dynamic phone formatting based on country code
             if (field.dataset.phoneFormat !== undefined) {
                 this.setupDynamicPhoneFormatting(field);
+            }
+            
+            // Google Places Autocomplete
+            if (field.dataset.googlePlaces === 'true') {
+                this.setupGooglePlaces(field);
+            }
+            
+            // Postal code detection (fallback if Google Places not used)
+            if (field.dataset.postalCode === 'true') {
+                this.setupPostalCodeDetection(field);
+            }
+            
+            // State name population (can work with Google Places or postal code)
+            if (field.dataset.stateName === 'true') {
+                this.setupStateNameField(field);
             }
         },
 
@@ -1417,6 +1433,200 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         // Public method to enhance a specific field
         enhanceSpecificField: function(field) {
             this.enhanceField(field);
+        },
+
+        // Google Places Autocomplete
+        setupGooglePlaces: function(field) {
+            // Check if Google Places API is loaded
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>');
+                return;
+            }
+
+            // Configuration options
+            const options = {
+                types: field.dataset.placesTypes ? field.dataset.placesTypes.split(',') : ['address'],
+                componentRestrictions: field.dataset.placesCountries ? 
+                    { country: field.dataset.placesCountries.split(',') } : undefined,
+                fields: ['address_components', 'formatted_address', 'geometry', 'name']
+            };
+
+            // Initialize autocomplete
+            const autocomplete = new google.maps.places.Autocomplete(field, options);
+
+            // Handle place selection
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                
+                if (!place.address_components) {
+                    console.warn('No address components found for selected place');
+                    return;
+                }
+
+                // Populate related fields if enabled
+                if (field.dataset.populateFields === 'true') {
+                    this.populateAddressFields(place, field);
+                }
+
+                // Trigger custom event
+                this.triggerCustomEvent(field, 'placeSelected', {
+                    place: place,
+                    formattedAddress: place.formatted_address,
+                    addressComponents: place.address_components
+                });
+            });
+
+            // Store autocomplete instance for later use
+            field._googleAutocomplete = autocomplete;
+
+            this.triggerCustomEvent(field, 'googlePlacesSetup', {
+                options: options
+            });
+        },
+
+        // Populate address fields based on Google Places selection
+        populateAddressFields: function(place, sourceField) {
+            const form = sourceField.closest('form');
+            if (!form) return;
+
+            // Create address component map
+            const addressMap = {};
+            place.address_components.forEach(component => {
+                const types = component.types;
+                types.forEach(type => {
+                    addressMap[type] = {
+                        long_name: component.long_name,
+                        short_name: component.short_name
+                    };
+                });
+            });
+
+            // Find and populate fields with address component data attributes
+            const fieldsToPopulate = form.querySelectorAll('[data-address-component]');
+            
+            fieldsToPopulate.forEach(targetField => {
+                const componentTypes = targetField.dataset.addressComponent.split(',');
+                let value = '';
+
+                // Try each component type until we find a match
+                for (const componentType of componentTypes) {
+                    const trimmedType = componentType.trim();
+                    if (addressMap[trimmedType]) {
+                        // Use short_name for states/countries, long_name for others
+                        if (trimmedType === 'administrative_area_level_1' || trimmedType === 'country') {
+                            value = targetField.dataset.useFullName === 'true' ? 
+                                addressMap[trimmedType].long_name : 
+                                addressMap[trimmedType].short_name;
+                        } else {
+                            value = addressMap[trimmedType].long_name;
+                        }
+                        break;
+                    }
+                }
+
+                // Special handling for combined fields (e.g., street number + route)
+                if (componentTypes.includes('street_number') && componentTypes.includes('route')) {
+                    const streetNumber = addressMap['street_number']?.long_name || '';
+                    const route = addressMap['route']?.long_name || '';
+                    value = `${streetNumber} ${route}`.trim();
+                }
+
+                // Populate the field
+                if (value) {
+                    if (targetField.tagName === 'SELECT') {
+                        this.populateSelectField(targetField, value, addressMap);
+                    } else {
+                        targetField.value = value;
+                        // Trigger input event for any listeners
+                        const inputEvent = new Event('input', { bubbles: true });
+                        targetField.dispatchEvent(inputEvent);
+                    }
+                }
+            });
+
+            this.triggerCustomEvent(sourceField, 'addressFieldsPopulated', {
+                addressMap: addressMap,
+                populatedFields: fieldsToPopulate.length
+            });
+        },
+
+        // Populate select fields (like country/state dropdowns)
+        populateSelectField: function(selectField, value, addressMap) {
+            // For country fields with our country code data
+            if (selectField.dataset.countryCode === 'true') {
+                const countryCode = addressMap['country']?.short_name;
+                if (countryCode) {
+                    // Find option by country code
+                    const options = selectField.querySelectorAll('option');
+                    for (const option of options) {
+                        if (option.dataset.countryName === countryCode || 
+                            option.textContent.includes(countryCode) ||
+                            option.value.includes(countryCode)) {
+                            selectField.value = option.value;
+                            break;
+                        }
+                    }
+                }
+                return;
+            }
+
+            // For state fields
+            if (selectField.dataset.stateName === 'true') {
+                const stateCode = addressMap['administrative_area_level_1']?.short_name;
+                const stateName = addressMap['administrative_area_level_1']?.long_name;
+                
+                // Try to find existing option
+                const options = selectField.querySelectorAll('option');
+                let optionFound = false;
+                
+                for (const option of options) {
+                    if (option.value === stateCode || 
+                        option.value === stateName ||
+                        option.textContent.includes(stateCode) ||
+                        option.textContent.includes(stateName)) {
+                        selectField.value = option.value;
+                        optionFound = true;
+                        break;
+                    }
+                }
+
+                // If no option found, add new option
+                if (!optionFound && (stateCode || stateName)) {
+                    const newOption = document.createElement('option');
+                    newOption.value = stateCode || stateName;
+                    newOption.textContent = stateName && stateCode ? `${stateName} (${stateCode})` : (stateName || stateCode);
+                    selectField.appendChild(newOption);
+                    selectField.value = newOption.value;
+                }
+                return;
+            }
+
+            // For other select fields, try to find matching option
+            const options = selectField.querySelectorAll('option');
+            for (const option of options) {
+                if (option.value === value || option.textContent.trim() === value) {
+                    selectField.value = option.value;
+                    break;
+                }
+            }
+        },
+
+        // Postal code detection (fallback if Google Places not used)
+        setupPostalCodeDetection: function(field) {
+            // This would be implemented if needed as a fallback
+            // For now, we'll focus on Google Places as the primary method
+            console.log('Postal code detection - use Google Places for better accuracy');
+        },
+
+        // State name population (can work with Google Places or postal code)
+        setupStateNameField: function(field) {
+            // This field will be populated by Google Places autocomplete
+            // Mark it as ready for population
+            field.classList.add('wf-state-field');
+            
+            this.triggerCustomEvent(field, 'stateFieldSetup', {
+                ready: true
+            });
         }
     };
 

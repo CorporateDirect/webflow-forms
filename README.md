@@ -96,6 +96,15 @@ The library only enhances fields that have specific data attributes. Fields with
 | `data-phone-format` | Input | `""` (empty) | Enable dynamic phone formatting based on country selection | `data-phone-format=""` |
 | `data-phone-country-field` | Input | CSS selector | Specify which country field to listen to (optional) | `data-phone-country-field="#country-select"` |
 | `data-phone-update-placeholder` | Input | `"true"`, `"false"` | Update placeholder with country format (default: true) | `data-phone-update-placeholder="false"` |
+| `data-phone-type` | Input | `"mobile"`, `"fixed_line"`, `"toll_free"`, `"premium_rate"` | Phone number type for formatting (default: mobile) | `data-phone-type="fixed_line"` |
+| `data-google-places` | Input | `"true"` | Enable Google Places Autocomplete | `<input data-google-places="true">` |
+| `data-populate-fields` | Input | `"true"` | Auto-populate other form fields from selected address | `data-populate-fields="true"` |
+| `data-address-component` | Input/Select | Google component type(s) | Map field to specific address component | `data-address-component="locality"` |
+| `data-places-types` | Input | Comma-separated types | Restrict autocomplete to specific place types | `data-places-types="address,establishment"` |
+| `data-places-countries` | Input | Comma-separated country codes | Restrict autocomplete to specific countries | `data-places-countries="US,CA,GB"` |
+| `data-use-full-name` | Input/Select | `"true"`, `"false"` | Use full names instead of abbreviations (default: false) | `data-use-full-name="true"` |
+| `data-postal-code` | Input | `"true"` | Enable postal code detection (fallback method) | `<input data-postal-code="true">` |
+| `data-state-name` | Select | `"true"` | Mark field as state/province field for population | `<select data-state-name="true">` |
 
 ### Common Combinations
 
@@ -319,6 +328,249 @@ Powered by Google's **libphonenumber** library, supporting **240+ countries** wi
        data-phone-country-field="#specific-country-select"
        data-phone-update-placeholder="false">
 ```
+
+### Google Places Autocomplete
+
+**🎯 The most powerful address input solution** - leverages Google's global address database for accurate, fast address entry with automatic field population.
+
+**Why Google Places is Superior:**
+- ✅ **Familiar UX**: Users recognize Google's autocomplete interface
+- ✅ **Global coverage**: Accurate data for addresses worldwide  
+- ✅ **Instant validation**: Only real addresses can be selected
+- ✅ **Complete data**: Gets street, city, state, postal code, country in one interaction
+- ✅ **Mobile optimized**: Works perfectly on mobile devices
+- ✅ **Auto-population**: Fills multiple form fields automatically
+
+#### **Basic Setup**
+
+**Prerequisites:**
+1. **Google API Key**: Get one from [Google Cloud Console](https://console.cloud.google.com/)
+2. **Enable Places API**: In your Google Cloud project
+3. **Include Google Maps JavaScript API**:
+
+```html
+<!-- Add BEFORE your Webflow Field Enhancer script -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
+```
+
+#### **Implementation Examples**
+
+**Single Address Field (Simplest):**
+```html
+<!-- User types address, gets autocomplete suggestions -->
+<input type="text" name="address" 
+       data-google-places="true" 
+       data-populate-fields="true"
+       placeholder="Start typing your address...">
+
+<!-- These fields get auto-populated when user selects an address -->
+<input type="text" name="street" data-address-component="street_number,route">
+<input type="text" name="city" data-address-component="locality">
+<select name="state" data-address-component="administrative_area_level_1" data-state-name="true">
+  <option value="">Select State</option>
+</select>
+<input type="text" name="postal-code" data-address-component="postal_code">
+<select name="country" data-address-component="country" data-country-code="true">
+  <option value="">Select Country</option>
+</select>
+```
+
+**Component-Based Fields (More Control):**
+```html
+<!-- Address search field -->
+<input type="text" name="address-search" 
+       data-google-places="true" 
+       data-populate-fields="true"
+       placeholder="Search for your address">
+
+<!-- Individual address components (populated automatically) -->
+<label>Street Address</label>
+<input type="text" name="street" data-address-component="street_number,route" readonly>
+
+<label>City</label>
+<input type="text" name="city" data-address-component="locality" readonly>
+
+<label>State/Province</label>
+<select name="state" data-address-component="administrative_area_level_1" data-state-name="true">
+  <option value="">Select State</option>
+</select>
+
+<label>Postal Code</label>
+<input type="text" name="postal-code" data-address-component="postal_code" readonly>
+
+<label>Country</label>
+<select name="country" data-address-component="country" data-country-code="true">
+  <option value="">Select Country</option>
+</select>
+```
+
+**Advanced Configuration:**
+```html
+<!-- Restrict to specific countries and address types -->
+<input type="text" name="address" 
+       data-google-places="true" 
+       data-populate-fields="true"
+       data-places-countries="US,CA,GB"
+       data-places-types="address"
+       placeholder="Enter US, Canada, or UK address">
+
+<!-- Use full state names instead of abbreviations -->
+<select name="state" 
+        data-address-component="administrative_area_level_1" 
+        data-state-name="true"
+        data-use-full-name="true">
+  <!-- Will show "California" instead of "CA" -->
+</select>
+```
+
+#### **Address Component Mapping**
+
+| Component Type | Description | Example |
+|----------------|-------------|---------|
+| `street_number` | Street number | "123" |
+| `route` | Street name | "Main Street" |
+| `street_number,route` | Full street address | "123 Main Street" |
+| `locality` | City | "Los Angeles" |
+| `administrative_area_level_1` | State/Province | "CA" or "California" |
+| `administrative_area_level_2` | County | "Los Angeles County" |
+| `country` | Country | "US" or "United States" |
+| `postal_code` | Postal/ZIP code | "90210" |
+| `postal_code_suffix` | ZIP+4 extension | "1234" |
+| `subpremise` | Apartment/Suite | "Apt 4B" |
+| `premise` | Building number | "Building A" |
+
+#### **User Experience Flow**
+
+```
+User types: "123 Main St, Los Ang..."
+    ↓
+Google suggests: "123 Main Street, Los Angeles, CA 90210, USA"
+    ↓
+User clicks suggestion
+    ↓
+✨ Auto-populate all fields:
+   - Street: "123 Main Street"
+   - City: "Los Angeles"
+   - State: "CA" (or "California" if data-use-full-name="true")
+   - Postal: "90210"
+   - Country: "US" (matches existing country dropdown)
+```
+
+#### **Integration with Existing Features**
+
+**Works seamlessly with:**
+- ✅ **Country Code Dropdowns**: Auto-selects matching country
+- ✅ **State Fields**: Auto-populates or creates state options
+- ✅ **Phone Formatting**: Country selection triggers phone format updates
+- ✅ **Form Validation**: Webflow's native validation still works
+- ✅ **Custom Events**: Listen for address selection events
+
+**Combined Example:**
+```html
+<!-- Address autocomplete -->
+<input type="text" name="address" data-google-places="true" data-populate-fields="true">
+
+<!-- Auto-populated country (triggers phone formatting) -->
+<select name="country" data-country-code="true" data-address-component="country">
+  <option value="">Select Country</option>
+</select>
+
+<!-- Phone field with dynamic formatting based on selected country -->
+<input type="tel" name="phone" data-phone-format="" data-phone-type="mobile">
+
+<!-- Auto-populated state -->
+<select name="state" data-state-name="true" data-address-component="administrative_area_level_1">
+  <option value="">Select State</option>
+</select>
+```
+
+#### **Customization Options**
+
+**Restrict Place Types:**
+```html
+<!-- Only addresses (no businesses) -->
+<input data-google-places="true" data-places-types="address">
+
+<!-- Only establishments (businesses) -->
+<input data-google-places="true" data-places-types="establishment">
+
+<!-- Multiple types -->
+<input data-google-places="true" data-places-types="address,establishment">
+```
+
+**Restrict Countries:**
+```html
+<!-- US and Canada only -->
+<input data-google-places="true" data-places-countries="US,CA">
+
+<!-- European countries -->
+<input data-google-places="true" data-places-countries="GB,FR,DE,IT,ES">
+```
+
+**Display Preferences:**
+```html
+<!-- Use full state names -->
+<select data-address-component="administrative_area_level_1" data-use-full-name="true">
+<!-- Shows "California" instead of "CA" -->
+
+<!-- Use abbreviations (default) -->
+<select data-address-component="administrative_area_level_1">
+<!-- Shows "CA" -->
+```
+
+#### **Custom Events**
+
+Listen to Google Places events:
+
+```javascript
+// Address selected
+document.addEventListener('webflowField:placeSelected', (e) => {
+    console.log('Address selected:', e.detail.formattedAddress);
+    console.log('Address components:', e.detail.addressComponents);
+});
+
+// Fields populated
+document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
+    console.log('Populated', e.detail.populatedFields, 'fields');
+});
+
+// Google Places setup complete
+document.addEventListener('webflowField:googlePlacesSetup', (e) => {
+    console.log('Google Places ready with options:', e.detail.options);
+});
+```
+
+#### **Error Handling & Fallbacks**
+
+**Graceful degradation:**
+- ✅ **No Google API**: Fields work as normal text inputs
+- ✅ **API key issues**: Console warning, manual entry still works
+- ✅ **No internet**: Falls back to manual address entry
+- ✅ **Unsupported browsers**: Progressive enhancement
+
+**API Key Management:**
+```html
+<!-- Development -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_DEV_API_KEY&libraries=places"></script>
+
+<!-- Production (restrict by domain) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_PROD_API_KEY&libraries=places"></script>
+```
+
+#### **Cost Considerations**
+
+**Google Places API Pricing (2024):**
+- **Autocomplete**: $2.83 per 1,000 requests
+- **Free tier**: $200/month credit (≈70,000 autocomplete requests)
+- **Typical usage**: Most Webflow sites stay within free tier
+
+**Cost optimization:**
+- ✅ **Restrict by country**: Reduces irrelevant suggestions
+- ✅ **Restrict by type**: Limits to addresses only
+- ✅ **Session tokens**: Reduce costs for multiple requests (handled automatically)
+
+This provides the most user-friendly, accurate address input experience possible! 🎯
 
 ### Disable Enhancement
 
