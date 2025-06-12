@@ -898,7 +898,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const fieldId = field.id;
             const fieldClass = field.className;
             const isRequired = field.required;
-            const placeholder = field.querySelector('option[disabled]')?.textContent || 'Select Country';
+            // Get placeholder from disabled option, original field placeholder, or leave empty
+            const placeholder = field.querySelector('option[disabled]')?.textContent || field.placeholder || '';
             
             // Create container for proper dropdown positioning (but without problematic styling)
             const container = document.createElement('div');
