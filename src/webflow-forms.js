@@ -29,6 +29,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         phoneFormatCache: new Map(),
         countryDataCache: null,
 
+        // Get flag emoji for country ISO code
+        getCountryFlag: function(isoCode) {
+            if (!isoCode || isoCode.length !== 2) return '';
+            
+            // Convert ISO country code to flag emoji
+            // Flag emojis are created by combining regional indicator symbols
+            const codePoints = isoCode.toUpperCase().split('').map(char => 
+                0x1F1E6 + char.charCodeAt(0) - 'A'.charCodeAt(0)
+            );
+            return String.fromCodePoint(...codePoints);
+        },
+
         // Generate country data from libphonenumber with proper country names
         getCountryCodes: function() {
             // Return cached data if available
@@ -298,7 +310,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                             name: countryNames[countryCode] || countryCode, // Use proper name or fall back to ISO code
                             countryCode: `+${callingCode}`, // Dialing code (e.g., "+1", "+44", "+33")
                             isoCode: countryCode, // Keep ISO code for reference
-                            flag: '' // No flag emoji
+                            flag: this.getCountryFlag(countryCode) // Flag emoji
                         });
                     } catch (error) {
                         // Skip countries that cause errors
@@ -314,8 +326,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.warn('Could not generate country data from libphonenumber:', error);
                 // Fallback to minimal data
                 return [
-                    { name: 'United States', countryCode: '+1', isoCode: 'US', flag: '' },
-                    { name: 'United Kingdom', countryCode: '+44', isoCode: 'GB', flag: '' }
+                    { name: 'United States', countryCode: '+1', isoCode: 'US', flag: this.getCountryFlag('US') },
+                    { name: 'United Kingdom', countryCode: '+44', isoCode: 'GB', flag: this.getCountryFlag('GB') }
                 ];
             }
         },
@@ -961,7 +973,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Get formatted countries data
         getFormattedCountries: function(field) {
-            const displayFormat = field.dataset.countryFormat || 'name-code';
+            const displayFormat = field.dataset.countryFormat || 'flag-code';
             const sortBy = field.dataset.countrySortBy || 'name';
             const valueType = field.dataset.countryValue || 'code';
             
@@ -1003,9 +1015,17 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     case 'code':
                         displayText = country.countryCode;
                         break;
+                    case 'flag-code':
+                        displayText = `${country.flag} ${country.countryCode}`;
+                        break;
                     case 'name-code':
-                    default:
                         displayText = `${country.name} (${country.countryCode})`;
+                        break;
+                    case 'flag-name-code':
+                        displayText = `${country.flag} ${country.name} (${country.countryCode})`;
+                        break;
+                    default:
+                        displayText = `${country.flag} ${country.countryCode}`;
                         break;
                 }
                 
@@ -1331,7 +1351,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Update placeholder to show country code + space + example (only if injection enabled)
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
-                const injectCountryCode = phoneField.dataset.phoneInjectCountryCode !== 'false';
+                const injectCountryCode = phoneField.dataset.phoneInjectCountryCode === 'true';
                 
                 if (injectCountryCode) {
                     let cleanDialingCode = selectedDialingCode;
@@ -1365,7 +1385,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             phoneField.addEventListener('input', phoneField._phoneFormatHandler);
             
             // Inject country code into field value if not already present (unless disabled)
-            if (selectedDialingCode && phoneField.dataset.phoneInjectCountryCode !== 'false') {
+            if (selectedDialingCode && phoneField.dataset.phoneInjectCountryCode === 'true') {
                 this.injectCountryCodeIntoPhoneField(phoneField, selectedDialingCode);
             }
             
@@ -1435,7 +1455,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             console.log('formatPhoneInputWithLibphonenumber called with value:', currentValue);
             
             // Check if country code injection is disabled
-            const injectCountryCode = field.dataset.phoneInjectCountryCode !== 'false';
+            const injectCountryCode = field.dataset.phoneInjectCountryCode === 'true';
             
             // Check if value contains country code prefix (before space) - only if injection is enabled
             const hasCountryCodePrefix = injectCountryCode && currentValue.includes(' ') && currentValue.startsWith('+');
