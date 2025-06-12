@@ -343,7 +343,36 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Get all countries supported by libphonenumber
                 const countries = getCountries();
                 
-                // Find the country that matches this dialing code
+                // Priority mapping for shared dialing codes (main country first)
+                const priorityMapping = {
+                    '1': ['US', 'CA'],      // +1: US first, then Canada
+                    '7': ['RU', 'KZ'],      // +7: Russia first, then Kazakhstan
+                    '358': ['FI', 'AX'],    // +358: Finland first, then Åland Islands
+                    '44': ['GB', 'GG', 'IM', 'JE'], // +44: UK first, then dependencies
+                    '33': ['FR', 'MC'],     // +33: France first, then Monaco
+                    '39': ['IT', 'SM', 'VA'], // +39: Italy first, then San Marino, Vatican
+                    '47': ['NO', 'SJ'],     // +47: Norway first, then Svalbard
+                    '45': ['DK', 'FO', 'GL'], // +45: Denmark first, then Faroe Islands, Greenland
+                    '212': ['MA', 'EH'],    // +212: Morocco first, then Western Sahara
+                    '590': ['GP', 'BL', 'MF'], // +590: Guadeloupe first
+                    '596': ['MQ'],          // +596: Martinique
+                    '262': ['RE', 'YT'],    // +262: Réunion first, then Mayotte
+                    '599': ['CW', 'BQ']     // +599: Curaçao first, then Caribbean Netherlands
+                };
+                
+                // Check if we have a priority mapping for this dialing code
+                if (priorityMapping[numericCode]) {
+                    for (const priorityCountry of priorityMapping[numericCode]) {
+                        if (countries.includes(priorityCountry)) {
+                            const countryCallingCode = getCountryCallingCode(priorityCountry);
+                            if (countryCallingCode === numericCode) {
+                                return priorityCountry;
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback: find the first country that matches this dialing code
                 for (const countryCode of countries) {
                     const countryCallingCode = getCountryCallingCode(countryCode);
                     if (countryCallingCode === numericCode) {
@@ -462,6 +491,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     fixed_line: '010 1234 5678',
                     toll_free: '400 123 4567',
                     premium_rate: '900 123 456'
+                },
+                'FI': {
+                    mobile: '050 123 4567',
+                    fixed_line: '09 1234 5678',
+                    toll_free: '0800 123 456',
+                    premium_rate: '0600 123 456'
+                },
+                'AX': {
+                    mobile: '050 123 4567',
+                    fixed_line: '018 12345',
+                    toll_free: '0800 123 456',
+                    premium_rate: '0600 123 456'
                 }
             };
 
@@ -1581,6 +1622,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 'LV': injectCountryCode ? 16 : 11,  // "+371 21234567" vs "21234567"
                 'EE': injectCountryCode ? 16 : 11,  // "+372 5123 4567" vs "5123 4567"
                 'FI': injectCountryCode ? 16 : 11,  // "+358 050 1234567" vs "050 1234567"
+                'AX': injectCountryCode ? 16 : 11,  // "+358 050 1234567" vs "050 1234567" (Åland Islands use same format as Finland)
                 'SE': injectCountryCode ? 16 : 11,  // "+46 070 123 45 67" vs "070 123 45 67"
                 'NO': injectCountryCode ? 13 : 8,   // "+47 12345678" vs "12345678"
                 'DK': injectCountryCode ? 13 : 8,   // "+45 12345678" vs "12345678"
