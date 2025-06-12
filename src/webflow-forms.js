@@ -1453,6 +1453,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             phoneField._currentPhoneType = phoneType;
             phoneField._asYouType = countryCode ? new AsYouType(countryCode) : new AsYouType();
             
+            // Set max length based on country's phone format
+            this.setPhoneMaxLength(phoneField, countryCode, selectedDialingCode);
+            
             // Remove existing phone formatting listeners
             if (phoneField._phoneFormatHandler) {
                 phoneField.removeEventListener('input', phoneField._phoneFormatHandler);
@@ -1481,6 +1484,108 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 phoneType: phoneType,
                 placeholder: exampleNumber
             });
+        },
+
+        // Set max length for phone field based on country format
+        setPhoneMaxLength: function(phoneField, countryCode, selectedDialingCode) {
+            const injectCountryCode = phoneField.dataset.phoneInjectCountryCode === 'true';
+            
+            // Get the max length for this country
+            const maxLength = this.getPhoneMaxLength(countryCode, injectCountryCode, selectedDialingCode);
+            
+            if (maxLength > 0) {
+                phoneField.setAttribute('maxlength', maxLength);
+                console.log(`Set max length for ${countryCode || 'unknown'} to ${maxLength} characters`);
+            } else {
+                // Remove maxlength if we can't determine it
+                phoneField.removeAttribute('maxlength');
+            }
+        },
+
+        // Get max length for phone number based on country
+        getPhoneMaxLength: function(countryCode, injectCountryCode, selectedDialingCode) {
+            if (!countryCode) return 0;
+            
+            // Country-specific max lengths (including formatting characters)
+            const maxLengths = {
+                'US': injectCountryCode ? 17 : 14,  // "+1 (555) 123-4567" vs "(555) 123-4567"
+                'CA': injectCountryCode ? 17 : 14,  // Same as US
+                'GB': injectCountryCode ? 18 : 13,  // "+44 07911 123456" vs "07911 123456"
+                'FR': injectCountryCode ? 19 : 14,  // "+33 06 12 34 56 78" vs "06 12 34 56 78"
+                'DE': injectCountryCode ? 19 : 15,  // "+49 0151 12345678" vs "0151 12345678"
+                'JP': injectCountryCode ? 18 : 13,  // "+81 090-1234-5678" vs "090-1234-5678"
+                'AU': injectCountryCode ? 17 : 12,  // "+61 0412 345 678" vs "0412 345 678"
+                'IN': injectCountryCode ? 17 : 12,  // "+91 98765 43210" vs "98765 43210"
+                'BR': injectCountryCode ? 20 : 15,  // "+55 (11) 99999-9999" vs "(11) 99999-9999"
+                'CN': injectCountryCode ? 18 : 13,  // "+86 138 0013 8000" vs "138 0013 8000"
+                'IT': injectCountryCode ? 17 : 12,  // "+39 123 456 7890" vs "123 456 7890"
+                'ES': injectCountryCode ? 16 : 11,  // "+34 123 45 67 89" vs "123 45 67 89"
+                'NL': injectCountryCode ? 16 : 11,  // "+31 06 12345678" vs "06 12345678"
+                'BE': injectCountryCode ? 16 : 11,  // "+32 0123 45 67 89" vs "0123 45 67 89"
+                'CH': injectCountryCode ? 16 : 11,  // "+41 079 123 45 67" vs "079 123 45 67"
+                'AT': injectCountryCode ? 17 : 12,  // "+43 0664 1234567" vs "0664 1234567"
+                'SE': injectCountryCode ? 16 : 11,  // "+46 070 123 45 67" vs "070 123 45 67"
+                'NO': injectCountryCode ? 13 : 8,   // "+47 12345678" vs "12345678"
+                'DK': injectCountryCode ? 13 : 8,   // "+45 12345678" vs "12345678"
+                'FI': injectCountryCode ? 16 : 11,  // "+358 050 1234567" vs "050 1234567"
+                'IE': injectCountryCode ? 16 : 11,  // "+353 087 1234567" vs "087 1234567"
+                'PT': injectCountryCode ? 16 : 11,  // "+351 912 345 678" vs "912 345 678"
+                'GR': injectCountryCode ? 16 : 11,  // "+30 694 1234567" vs "694 1234567"
+                'PL': injectCountryCode ? 16 : 11,  // "+48 512 345 678" vs "512 345 678"
+                'CZ': injectCountryCode ? 17 : 12,  // "+420 123 456 789" vs "123 456 789"
+                'HU': injectCountryCode ? 15 : 10,  // "+36 30 1234567" vs "30 1234567"
+                'RO': injectCountryCode ? 15 : 10,  // "+40 712 345 678" vs "712 345 678"
+                'BG': injectCountryCode ? 16 : 11,  // "+359 87 1234567" vs "87 1234567"
+                'HR': injectCountryCode ? 17 : 12,  // "+385 091 1234567" vs "091 1234567"
+                'SI': injectCountryCode ? 17 : 12,  // "+386 031 123 456" vs "031 123 456"
+                'SK': injectCountryCode ? 17 : 12,  // "+421 905 123 456" vs "905 123 456"
+                'LT': injectCountryCode ? 17 : 12,  // "+370 612 34567" vs "612 34567"
+                'LV': injectCountryCode ? 16 : 11,  // "+371 21234567" vs "21234567"
+                'EE': injectCountryCode ? 16 : 11,  // "+372 5123 4567" vs "5123 4567"
+                'KR': injectCountryCode ? 18 : 13,  // "+82 010-1234-5678" vs "010-1234-5678"
+                'SG': injectCountryCode ? 14 : 9,   // "+65 9123 4567" vs "9123 4567"
+                'HK': injectCountryCode ? 14 : 9,   // "+852 9123 4567" vs "9123 4567"
+                'TW': injectCountryCode ? 16 : 11,  // "+886 912 345 678" vs "912 345 678"
+                'TH': injectCountryCode ? 15 : 10,  // "+66 81 234 5678" vs "81 234 5678"
+                'MY': injectCountryCode ? 15 : 10,  // "+60 12-345 6789" vs "12-345 6789"
+                'ID': injectCountryCode ? 16 : 11,  // "+62 812-3456-789" vs "812-3456-789"
+                'PH': injectCountryCode ? 16 : 11,  // "+63 917 123 4567" vs "917 123 4567"
+                'VN': injectCountryCode ? 15 : 10,  // "+84 91 234 56 78" vs "91 234 56 78"
+                'MX': injectCountryCode ? 17 : 12,  // "+52 55 1234 5678" vs "55 1234 5678"
+                'AR': injectCountryCode ? 17 : 12,  // "+54 11 1234-5678" vs "11 1234-5678"
+                'CL': injectCountryCode ? 14 : 9,   // "+56 9 1234 5678" vs "9 1234 5678"
+                'CO': injectCountryCode ? 16 : 11,  // "+57 321 1234567" vs "321 1234567"
+                'PE': injectCountryCode ? 15 : 10,  // "+51 987 654 321" vs "987 654 321"
+                'VE': injectCountryCode ? 16 : 11,  // "+58 412-1234567" vs "412-1234567"
+                'ZA': injectCountryCode ? 15 : 10,  // "+27 82 123 4567" vs "82 123 4567"
+                'EG': injectCountryCode ? 15 : 10,  // "+20 100 123 4567" vs "100 123 4567"
+                'NG': injectCountryCode ? 17 : 12,  // "+234 802 123 4567" vs "802 123 4567"
+                'KE': injectCountryCode ? 16 : 11,  // "+254 712 123456" vs "712 123456"
+                'MA': injectCountryCode ? 16 : 11,  // "+212 612-345678" vs "612-345678"
+                'TN': injectCountryCode ? 15 : 10,  // "+216 20 123 456" vs "20 123 456"
+                'IL': injectCountryCode ? 16 : 11,  // "+972 50-123-4567" vs "50-123-4567"
+                'AE': injectCountryCode ? 15 : 10,  // "+971 50 123 4567" vs "50 123 4567"
+                'SA': injectCountryCode ? 15 : 10,  // "+966 50 123 4567" vs "50 123 4567"
+                'TR': injectCountryCode ? 16 : 11,  // "+90 532 123 45 67" vs "532 123 45 67"
+                'RU': injectCountryCode ? 16 : 11,  // "+7 912 345-67-89" vs "912 345-67-89"
+                'UA': injectCountryCode ? 17 : 12,  // "+380 67 123 4567" vs "67 123 4567"
+                'BY': injectCountryCode ? 17 : 12,  // "+375 29 123-45-67" vs "29 123-45-67"
+                'KZ': injectCountryCode ? 16 : 11,  // "+7 701 123 4567" vs "701 123 4567"
+                'UZ': injectCountryCode ? 16 : 11,  // "+998 90 123 45 67" vs "90 123 45 67"
+                'NZ': injectCountryCode ? 15 : 10   // "+64 21 123 4567" vs "21 123 4567"
+            };
+            
+            // Return the max length for this country, or calculate a default
+            if (maxLengths[countryCode]) {
+                return maxLengths[countryCode];
+            }
+            
+            // Default calculation for unknown countries
+            // Estimate based on country code length + typical phone number length
+            const dialingCodeLength = selectedDialingCode ? selectedDialingCode.length : 3;
+            const basePhoneLength = 15; // Typical formatted phone number length
+            
+            return injectCountryCode ? dialingCodeLength + 1 + basePhoneLength : basePhoneLength;
         },
 
         // Inject country code into phone field
