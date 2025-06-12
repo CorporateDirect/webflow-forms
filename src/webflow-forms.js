@@ -1137,6 +1137,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 this.filterCountryOptions(searchInput.value, dropdownList, countries);
                 dropdownList.style.display = 'block';
                 
+                // Check if user typed a country code directly
+                this.detectTypedCountryCode(searchInput, hiddenSelect, countries, originalField);
+                
                 // Clear selection if input doesn't match
                 if (hiddenSelect.value && !searchInput.value) {
                     hiddenSelect.value = '';
@@ -1144,10 +1147,61 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             });
             
+            // Also detect country codes when user leaves the field
+            searchInput.addEventListener('blur', () => {
+                setTimeout(() => {
+                    this.detectTypedCountryCode(searchInput, hiddenSelect, countries, originalField, true);
+                }, 100); // Small delay to allow for click events
+            });
+            
             // Handle keyboard navigation
             searchInput.addEventListener('keydown', (e) => {
                 this.handleCountryKeyboardNavigation(e, dropdownList, searchInput, hiddenSelect, originalField);
             });
+        },
+
+        // Detect if user typed a country code directly and update phone formatting
+        detectTypedCountryCode: function(searchInput, hiddenSelect, countries, originalField, onBlur = false) {
+            const inputValue = searchInput.value.trim();
+            if (!inputValue) return;
+            
+            // Check if input looks like a country code (starts with + or is numeric)
+            const isCountryCodePattern = /^(\+?\d{1,4})$/.test(inputValue);
+            
+            if (isCountryCodePattern) {
+                // Normalize the input (add + if missing)
+                let normalizedCode = inputValue.startsWith('+') ? inputValue : '+' + inputValue;
+                
+                // Find matching country
+                const matchingCountry = countries.find(country => 
+                    country.countryCode === normalizedCode
+                );
+                
+                if (matchingCountry) {
+                    // Update hidden select to trigger phone formatting
+                    hiddenSelect.value = matchingCountry.value;
+                    
+                    // If on blur, keep the typed country code in the field
+                    if (onBlur) {
+                        searchInput.value = normalizedCode;
+                    }
+                    
+                    // Trigger change event for phone formatting
+                    const changeEvent = new Event('change', { bubbles: true });
+                    hiddenSelect.dispatchEvent(changeEvent);
+                    
+                    // Trigger custom event
+                    this.triggerCustomEvent(searchInput, 'countryCodeTyped', {
+                        value: matchingCountry.value,
+                        name: matchingCountry.name,
+                        code: matchingCountry.countryCode,
+                        flag: matchingCountry.flag,
+                        typedValue: normalizedCode
+                    });
+                    
+                    console.log('Country code detected:', normalizedCode, 'matched to:', matchingCountry.name);
+                }
+            }
         },
 
         // Filter country options based on search
@@ -1347,7 +1401,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.log('Standard select - selectedOption:', selectedOption);
                 console.log('Standard select - selectedDialingCode:', selectedDialingCode);
             } else if (countrySelector.dataset.countrySearch === 'true') {
-                // For searchable selects, get from hidden select
+                // For searchable selects, first try hidden select
                 const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
                 console.log('Searchable select - hiddenSelect:', hiddenSelect);
                 if (hiddenSelect && hiddenSelect.selectedIndex > 0) {
@@ -1355,6 +1409,14 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
                     console.log('Searchable select - selectedOption:', selectedOption);
                     console.log('Searchable select - selectedDialingCode:', selectedDialingCode);
+                } else {
+                    // If no selection in hidden select, check if user typed a country code directly
+                    const searchInputValue = countrySelector.value.trim();
+                    const isCountryCodePattern = /^(\+?\d{1,4})$/.test(searchInputValue);
+                    if (isCountryCodePattern) {
+                        selectedDialingCode = searchInputValue.startsWith('+') ? searchInputValue : '+' + searchInputValue;
+                        console.log('Typed country code detected:', selectedDialingCode);
+                    }
                 }
             }
             
