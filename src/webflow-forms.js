@@ -347,25 +347,119 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         },
 
         // Get example phone number for a country
-        getExamplePhoneNumber: function(countryCode) {
+        getExamplePhoneNumber: function(countryCode, phoneType = 'mobile') {
             if (!countryCode) return null;
             
+            // Create cache key that includes phone type
+            const cacheKey = `${countryCode}-${phoneType}`;
+            
             // Check cache first
-            if (this.phoneFormatCache.has(countryCode)) {
-                return this.phoneFormatCache.get(countryCode);
+            if (this.phoneFormatCache.has(cacheKey)) {
+                return this.phoneFormatCache.get(cacheKey);
             }
             
             try {
-                const exampleNumber = getExampleNumber(countryCode, 'mobile');
-                const formatted = exampleNumber ? exampleNumber.formatNational() : null;
+                // Try to get example number from libphonenumber
+                let exampleNumber = getExampleNumber(countryCode, phoneType);
+                
+                // If libphonenumber doesn't have examples, provide common patterns
+                if (!exampleNumber) {
+                    const patterns = this.getPhonePatterns(countryCode, phoneType);
+                    const formatted = patterns[phoneType] || patterns.mobile || patterns.fixed_line || null;
+                    
+                    // Cache the result
+                    this.phoneFormatCache.set(cacheKey, formatted);
+                    return formatted;
+                }
+                
+                const formatted = exampleNumber.formatNational();
                 
                 // Cache the result
-                this.phoneFormatCache.set(countryCode, formatted);
+                this.phoneFormatCache.set(cacheKey, formatted);
                 return formatted;
             } catch (error) {
-                console.warn(`Could not get example number for country: ${countryCode}`, error);
-                return null;
+                // Fallback to common patterns if libphonenumber fails
+                const patterns = this.getPhonePatterns(countryCode, phoneType);
+                const formatted = patterns[phoneType] || patterns.mobile || patterns.fixed_line || null;
+                
+                // Cache the result
+                this.phoneFormatCache.set(cacheKey, formatted);
+                return formatted;
             }
+        },
+
+        // Get common phone patterns for countries (fallback when libphonenumber doesn't have examples)
+        getPhonePatterns: function(countryCode, requestedType) {
+            const patterns = {
+                'US': {
+                    mobile: '(555) 123-4567',
+                    fixed_line: '(555) 123-4567',
+                    toll_free: '(800) 123-4567',
+                    premium_rate: '(900) 123-4567'
+                },
+                'GB': {
+                    mobile: '07911 123456',
+                    fixed_line: '020 7946 0958',
+                    toll_free: '0800 123456',
+                    premium_rate: '0906 123456'
+                },
+                'FR': {
+                    mobile: '06 12 34 56 78',
+                    fixed_line: '01 23 45 67 89',
+                    toll_free: '0800 123456',
+                    premium_rate: '0899 123456'
+                },
+                'DE': {
+                    mobile: '0151 12345678',
+                    fixed_line: '030 12345678',
+                    toll_free: '0800 1234567',
+                    premium_rate: '0900 1234567'
+                },
+                'JP': {
+                    mobile: '090-1234-5678',
+                    fixed_line: '03-1234-5678',
+                    toll_free: '0120-123-456',
+                    premium_rate: '0990-123-456'
+                },
+                'AU': {
+                    mobile: '0412 345 678',
+                    fixed_line: '02 1234 5678',
+                    toll_free: '1800 123 456',
+                    premium_rate: '1900 123 456'
+                },
+                'CA': {
+                    mobile: '(555) 123-4567',
+                    fixed_line: '(555) 123-4567',
+                    toll_free: '(800) 123-4567',
+                    premium_rate: '(900) 123-4567'
+                },
+                'IN': {
+                    mobile: '98765 43210',
+                    fixed_line: '011 2345 6789',
+                    toll_free: '1800 123 4567',
+                    premium_rate: '1900 123 456'
+                },
+                'BR': {
+                    mobile: '(11) 99999-9999',
+                    fixed_line: '(11) 3333-4444',
+                    toll_free: '0800 123 4567',
+                    premium_rate: '0900 123 456'
+                },
+                'CN': {
+                    mobile: '138 0013 8000',
+                    fixed_line: '010 1234 5678',
+                    toll_free: '400 123 4567',
+                    premium_rate: '900 123 456'
+                }
+            };
+
+            // Return patterns for the country, or generic mobile pattern
+            return patterns[countryCode] || {
+                mobile: '123 456 7890',
+                fixed_line: '123 456 7890',
+                toll_free: '800 123 4567',
+                premium_rate: '900 123 456'
+            };
         },
 
         // Initialize the library
@@ -418,7 +512,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         fieldHasEnhancements: function(field) {
             const enhancementAttributes = [
                 'format', 'characterCounter', 'autoResize', 'showsField', 'hidesField',
-                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode', 'phoneFormat'
+                'customValidation', 'inputMask', 'autoComplete', 'fieldSync', 'countryCode', 'phoneFormat', 'phoneType'
             ];
             
             return enhancementAttributes.some(attr => 
@@ -1198,8 +1292,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Convert dialing code to ISO country code for libphonenumber
             const countryCode = this.getCountryFromDialingCode(selectedDialingCode);
             
-            // Get example phone number for placeholder
-            const exampleNumber = this.getExamplePhoneNumber(countryCode);
+            // Get phone type preference from data attribute (mobile, fixed_line, etc.)
+            const phoneType = phoneField.dataset.phoneType || 'mobile';
+            
+            // Get example phone number for placeholder with specified type
+            const exampleNumber = this.getExamplePhoneNumber(countryCode, phoneType);
             
             // Update placeholder
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
@@ -1209,6 +1306,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Store current format info on field
             phoneField._currentCountryCode = countryCode;
             phoneField._currentDialingCode = selectedDialingCode;
+            phoneField._currentPhoneType = phoneType;
             phoneField._asYouType = countryCode ? new AsYouType(countryCode) : new AsYouType();
             
             // Remove existing phone formatting listeners
@@ -1231,6 +1329,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.triggerCustomEvent(phoneField, 'phoneFormatChanged', {
                 countryCode: countryCode,
                 dialingCode: selectedDialingCode,
+                phoneType: phoneType,
                 placeholder: exampleNumber
             });
         },
