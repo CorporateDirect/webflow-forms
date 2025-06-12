@@ -1292,16 +1292,25 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         updatePhoneFormat: function(phoneField, countrySelector) {
             let selectedDialingCode = '';
             
+            console.log('updatePhoneFormat called');
+            console.log('countrySelector:', countrySelector);
+            console.log('countrySelector.tagName:', countrySelector.tagName);
+            
             // Get selected country dialing code
             if (countrySelector.tagName === 'SELECT') {
                 const selectedOption = countrySelector.options[countrySelector.selectedIndex];
                 selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
+                console.log('Standard select - selectedOption:', selectedOption);
+                console.log('Standard select - selectedDialingCode:', selectedDialingCode);
             } else if (countrySelector.classList.contains('wf-country-search')) {
                 // For searchable selects, get from hidden select
                 const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
+                console.log('Searchable select - hiddenSelect:', hiddenSelect);
                 if (hiddenSelect && hiddenSelect.selectedIndex > 0) {
                     const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
                     selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
+                    console.log('Searchable select - selectedOption:', selectedOption);
+                    console.log('Searchable select - selectedDialingCode:', selectedDialingCode);
                 }
             }
             
@@ -1314,13 +1323,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Get example phone number for placeholder with specified type
             const exampleNumber = this.getExamplePhoneNumber(countryCode, phoneType);
             
-            // Update placeholder to show country code + line break + example
+            // Update placeholder to show country code + space + example
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
                 let cleanDialingCode = selectedDialingCode;
                 if (cleanDialingCode && !cleanDialingCode.startsWith('+')) {
                     cleanDialingCode = '+' + cleanDialingCode;
                 }
-                const countryCodePrefix = cleanDialingCode ? cleanDialingCode + '\n' : '';
+                const countryCodePrefix = cleanDialingCode ? cleanDialingCode + ' ' : '';
                 phoneField.placeholder = countryCodePrefix + exampleNumber;
             }
             
@@ -1362,34 +1371,45 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Inject country code into phone field
         injectCountryCodeIntoPhoneField: function(field, dialingCode) {
+            console.log('injectCountryCodeIntoPhoneField called with:', dialingCode);
+            
             // Ensure dialingCode starts with + and is properly formatted
             let cleanDialingCode = dialingCode;
             if (!cleanDialingCode.startsWith('+')) {
                 cleanDialingCode = '+' + cleanDialingCode;
             }
             
-            const countryCodePrefix = cleanDialingCode + '\n';
+            console.log('cleanDialingCode:', cleanDialingCode);
+            
+            const countryCodePrefix = cleanDialingCode + ' ';
             const currentValue = field.value;
+            
+            console.log('currentValue:', currentValue);
+            console.log('countryCodePrefix:', countryCodePrefix);
             
             // Check if country code is already present
             if (!currentValue.startsWith(cleanDialingCode)) {
-                // Extract any existing phone number part (after a newline if present)
+                // Extract any existing phone number part (after a space if present)
                 let existingPhonePart = '';
-                if (currentValue.includes('\n')) {
-                    // If there's already a newline, get everything after the first newline
-                    existingPhonePart = currentValue.split('\n').slice(1).join('\n');
+                if (currentValue.includes(' ') && currentValue.startsWith('+')) {
+                    // If there's already a space and starts with +, get everything after the first space
+                    existingPhonePart = currentValue.split(' ').slice(1).join(' ');
                 } else if (currentValue && !currentValue.startsWith('+')) {
                     // If there's existing content that doesn't start with +, preserve it
                     existingPhonePart = currentValue;
                 }
                 
-                // Set the new value with country code + line break + existing phone part
+                console.log('existingPhonePart:', existingPhonePart);
+                
+                // Set the new value with country code + space + existing phone part
                 field.value = countryCodePrefix + existingPhonePart;
                 
-                // Position cursor after the line break
+                console.log('field.value set to:', field.value);
+                
+                // Position cursor after the space
                 setTimeout(() => {
-                    const newlinePos = field.value.indexOf('\n') + 1;
-                    field.setSelectionRange(newlinePos, newlinePos);
+                    const spacePos = field.value.indexOf(' ') + 1;
+                    field.setSelectionRange(spacePos, spacePos);
                 }, 0);
             }
         },
@@ -1399,16 +1419,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const currentValue = field.value;
             const cursorPos = field.selectionStart;
             
-            // Check if value contains country code prefix (before newline)
-            const hasCountryCodePrefix = currentValue.includes('\n') && currentValue.startsWith('+');
+            console.log('formatPhoneInputWithLibphonenumber called with value:', currentValue);
+            
+            // Check if value contains country code prefix (before space)
+            const hasCountryCodePrefix = currentValue.includes(' ') && currentValue.startsWith('+');
             let countryCodePrefix = '';
             let phoneNumberPart = currentValue;
             
             if (hasCountryCodePrefix) {
-                const parts = currentValue.split('\n');
-                countryCodePrefix = parts[0] + '\n';
-                phoneNumberPart = parts.slice(1).join('\n');
+                const parts = currentValue.split(' ');
+                countryCodePrefix = parts[0] + ' ';
+                phoneNumberPart = parts.slice(1).join(' ');
             }
+            
+            console.log('hasCountryCodePrefix:', hasCountryCodePrefix);
+            console.log('countryCodePrefix:', countryCodePrefix);
+            console.log('phoneNumberPart:', phoneNumberPart);
             
             // Reset the AsYouType formatter for fresh formatting
             if (field._currentCountryCode) {
@@ -1420,14 +1446,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Remove all non-digit characters from phone number part only
             const digitsOnly = phoneNumberPart.replace(/\D/g, '');
             
+            console.log('digitsOnly:', digitsOnly);
+            console.log('field._currentCountryCode:', field._currentCountryCode);
+            
             // Format using AsYouType
             let formattedPhoneNumber = '';
             for (let i = 0; i < digitsOnly.length; i++) {
                 formattedPhoneNumber = field._asYouType.input(digitsOnly[i]);
             }
             
+            console.log('formattedPhoneNumber:', formattedPhoneNumber);
+            
             // Combine country code prefix with formatted phone number
             const finalFormattedValue = countryCodePrefix + formattedPhoneNumber;
+            
+            console.log('finalFormattedValue:', finalFormattedValue);
             
             // Update field value if changed
             if (field.value !== finalFormattedValue) {
@@ -1438,7 +1471,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const newLength = finalFormattedValue.length;
                 let newCursorPos = cursorPos;
                 
-                // If cursor is in the phone number part (after newline), adjust position
+                // If cursor is in the phone number part (after space), adjust position
                 if (hasCountryCodePrefix && cursorPos > countryCodePrefix.length) {
                     const phonePartOldLength = currentValue.length - countryCodePrefix.length;
                     const phonePartNewLength = formattedPhoneNumber.length;
