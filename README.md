@@ -93,7 +93,7 @@ The library only enhances fields that have specific data attributes. Fields with
 | `data-country-value` | Select | `"code"`, `"name"`, `"full"` | What value to store when selected | `data-country-value="name"` |
 | `data-country-sort-by` | Select | `"name"`, `"code"` | How to sort country list | `data-country-sort-by="name"` |
 | `data-country-searchable` | Select | `"true"`, `"false"` | Enable/disable search functionality (default: true) | `data-country-searchable="false"` |
-| `data-phone-format` | Input | `""` (empty) | Enable dynamic phone formatting based on country selection | `data-phone-format=""` |
+| `data-phone-format` | Input | `""` (empty) | Enable dynamic phone formatting with country code injection based on country selection | `data-phone-format=""` |
 | `data-phone-country-field` | Input | CSS selector | Specify which country field to listen to (optional) | `data-phone-country-field="#country-select"` |
 | `data-phone-update-placeholder` | Input | `"true"`, `"false"` | Update placeholder with country format (default: true) | `data-phone-update-placeholder="false"` |
 | `data-phone-type` | Input | `"mobile"`, `"fixed_line"`, `"toll_free"`, `"premium_rate"` | Phone number type for formatting (default: mobile) | `data-phone-type="fixed_line"` |
@@ -110,7 +110,7 @@ The library only enhances fields that have specific data attributes. Fields with
 
 | Use Case | Combination | Example |
 |----------|-------------|---------|
-| **Dynamic Phone Formatting** | `data-country-code` + `data-phone-format` | `<select data-country-code="true">` + `<input data-phone-format="">` |
+| **Dynamic Phone Formatting with Country Code Injection** | `data-country-code` + `data-phone-format` | `<select data-country-code="true">` + `<input data-phone-format="">` |
 | **Static Phone Formatting** | `data-format="phone-us"` | `<input type="tel" name="phone" data-format="phone-us">` |
 | **Smart Textarea** | `data-auto-resize` + `data-character-counter` | `<textarea data-auto-resize="true" data-character-counter="true" maxlength="500">` |
 | **Conditional Field** | `data-shows-field` + `data-trigger-value` | `<select data-shows-field="#details" data-trigger-value="yes">` |
@@ -280,9 +280,9 @@ Automatically populate select fields with **all 245 countries** supported by lib
 - `name`: Stores the country name (United States)
 - `full`: Stores both (United States (+1))
 
-### Dynamic Phone Formatting
+### Dynamic Phone Formatting with Country Code Injection
 
-Automatically format phone numbers based on the selected country code. **Replaces the old `data-format="phone-us"` with intelligent, country-aware formatting.**
+Automatically format phone numbers based on the selected country code **with automatic country code injection**. **Replaces the old `data-format="phone-us"` with intelligent, country-aware formatting.**
 
 ```html
 <!-- Country selector (searchable by default) -->
@@ -290,15 +290,22 @@ Automatically format phone numbers based on the selected country code. **Replace
   <option value="" disabled>Select Country</option>
 </select>
 
-<!-- Phone input with dynamic formatting -->
+<!-- Phone input with dynamic formatting and country code injection -->
 <input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
 ```
 
 **How it works:**
 1. 🌍 User selects a country (e.g., US (+1))
-2. 📱 Phone field automatically updates placeholder to `(555) 123-4567`
-3. ⌨️ As user types `5551234567`, it formats to `(555) 123-4567`
-4. 🔄 If user changes country to GB (+44), formatting switches to `07911 123456`
+2. 📱 Phone field **automatically injects** the country code: `+1` (with line break)
+3. ⌨️ User types their number below the country code: `+1\n5551234567`
+4. 🎯 Number formats in real-time: `+1\n(555) 123-4567`
+5. 🔄 If user changes country to GB (+44), field updates to `+44\n` and formatting switches accordingly
+
+**User Experience:**
+- **Country Code Injection**: Selected country's dialing code (e.g., "+1") is automatically added to the phone field
+- **Line Break Separation**: Country code and phone number are separated by a line break for clarity
+- **Smart Cursor Positioning**: Cursor is positioned after the line break, ready for number input
+- **Preserved User Input**: When switching countries, the phone number portion is preserved while the country code updates
 
 **Comprehensive Country Support:**
 Powered by Google's **libphonenumber** library, supporting **240+ countries** with accurate, up-to-date formatting rules:
@@ -745,10 +752,10 @@ Each handles what it does best, with no conflicts or overlap!
 ## Browser Support
 
 - Chrome (latest)
-- Firefox (latest)  
+- Firefox (latest)
 - Safari (latest)
 - Edge (latest)
-- IE11+ 
+- IE11+
 
 ## License
 

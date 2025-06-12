@@ -980,7 +980,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 
                 // Put US at the beginning
                 sortedCountries.unshift(usCountry);
-            } else {
+                } else {
                 // If US not found, just sort normally
                 if (sortBy === 'name') {
                     sortedCountries.sort((a, b) => a.name.localeCompare(b.name));
@@ -1314,9 +1314,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Get example phone number for placeholder with specified type
             const exampleNumber = this.getExamplePhoneNumber(countryCode, phoneType);
             
-            // Update placeholder
+            // Update placeholder to show country code + line break + example
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
-                phoneField.placeholder = exampleNumber;
+                const countryCodePrefix = selectedDialingCode ? `+${selectedDialingCode.replace('+', '')}\n` : '';
+                phoneField.placeholder = countryCodePrefix + exampleNumber;
             }
             
             // Store current format info on field
@@ -1337,6 +1338,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             phoneField.addEventListener('input', phoneField._phoneFormatHandler);
             
+            // Inject country code into field value if not already present
+            if (selectedDialingCode) {
+                this.injectCountryCodeIntoPhoneField(phoneField, selectedDialingCode);
+            }
+            
             // Format current value if it exists
             if (phoneField.value) {
                 this.formatPhoneInputWithLibphonenumber(phoneField);
@@ -1350,10 +1356,43 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
         },
 
+        // Inject country code into phone field
+        injectCountryCodeIntoPhoneField: function(field, dialingCode) {
+            const countryCodePrefix = `+${dialingCode.replace('+', '')}\n`;
+            const currentValue = field.value;
+            
+            // Check if country code is already present
+            if (!currentValue.startsWith(countryCodePrefix.trim())) {
+                // Extract any existing phone number part (after a newline if present)
+                const existingPhonePart = currentValue.includes('\n') ? 
+                    currentValue.split('\n').slice(1).join('\n') : currentValue;
+                
+                // Set the new value with country code + line break + existing phone part
+                field.value = countryCodePrefix + existingPhonePart;
+                
+                // Position cursor after the line break
+                setTimeout(() => {
+                    const newlinePos = field.value.indexOf('\n') + 1;
+                    field.setSelectionRange(newlinePos, newlinePos);
+                }, 0);
+            }
+        },
+
         // Format phone input using libphonenumber
         formatPhoneInputWithLibphonenumber: function(field) {
             const currentValue = field.value;
             const cursorPos = field.selectionStart;
+            
+            // Check if value contains country code prefix (before newline)
+            const hasCountryCodePrefix = currentValue.includes('\n') && currentValue.startsWith('+');
+            let countryCodePrefix = '';
+            let phoneNumberPart = currentValue;
+            
+            if (hasCountryCodePrefix) {
+                const parts = currentValue.split('\n');
+                countryCodePrefix = parts[0] + '\n';
+                phoneNumberPart = parts.slice(1).join('\n');
+            }
             
             // Reset the AsYouType formatter for fresh formatting
             if (field._currentCountryCode) {
@@ -1362,24 +1401,34 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 field._asYouType = new AsYouType();
             }
             
-            // Remove all non-digit characters for processing
-            const digitsOnly = currentValue.replace(/\D/g, '');
+            // Remove all non-digit characters from phone number part only
+            const digitsOnly = phoneNumberPart.replace(/\D/g, '');
             
             // Format using AsYouType
-            let formattedValue = '';
+            let formattedPhoneNumber = '';
             for (let i = 0; i < digitsOnly.length; i++) {
-                formattedValue = field._asYouType.input(digitsOnly[i]);
+                formattedPhoneNumber = field._asYouType.input(digitsOnly[i]);
             }
             
+            // Combine country code prefix with formatted phone number
+            const finalFormattedValue = countryCodePrefix + formattedPhoneNumber;
+            
             // Update field value if changed
-            if (field.value !== formattedValue) {
+            if (field.value !== finalFormattedValue) {
                 const oldLength = field.value.length;
-                field.value = formattedValue;
+                field.value = finalFormattedValue;
                 
                 // Restore cursor position accounting for formatting changes
-                const newLength = formattedValue.length;
-                const lengthDiff = newLength - oldLength;
-                const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formattedValue.length));
+                const newLength = finalFormattedValue.length;
+                let newCursorPos = cursorPos;
+                
+                // If cursor is in the phone number part (after newline), adjust position
+                if (hasCountryCodePrefix && cursorPos > countryCodePrefix.length) {
+                    const phonePartOldLength = currentValue.length - countryCodePrefix.length;
+                    const phonePartNewLength = formattedPhoneNumber.length;
+                    const lengthDiff = phonePartNewLength - phonePartOldLength;
+                    newCursorPos = Math.max(countryCodePrefix.length, Math.min(cursorPos + lengthDiff, finalFormattedValue.length));
+                }
                 
                 // Set cursor position after a brief delay to ensure it takes effect
                 setTimeout(() => {
@@ -1390,7 +1439,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     countryCode: field._currentCountryCode,
                     dialingCode: field._currentDialingCode,
                     rawValue: digitsOnly,
-                    formattedValue: formattedValue
+                    formattedValue: finalFormattedValue
                 });
             }
         },
