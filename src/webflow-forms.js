@@ -1326,14 +1326,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Get example phone number for placeholder with specified type
             const exampleNumber = this.getExamplePhoneNumber(countryCode, phoneType);
             
-            // Update placeholder to show country code + space + example
+            // Update placeholder to show country code + space + example (only if injection enabled)
             if (exampleNumber && phoneField.dataset.phoneUpdatePlaceholder !== 'false') {
-                let cleanDialingCode = selectedDialingCode;
-                if (cleanDialingCode && !cleanDialingCode.startsWith('+')) {
-                    cleanDialingCode = '+' + cleanDialingCode;
+                const injectCountryCode = phoneField.dataset.phoneInjectCountryCode !== 'false';
+                
+                if (injectCountryCode) {
+                    let cleanDialingCode = selectedDialingCode;
+                    if (cleanDialingCode && !cleanDialingCode.startsWith('+')) {
+                        cleanDialingCode = '+' + cleanDialingCode;
+                    }
+                    const countryCodePrefix = cleanDialingCode ? cleanDialingCode + ' ' : '';
+                    phoneField.placeholder = countryCodePrefix + exampleNumber;
+                } else {
+                    // For national format, just show the example without country code
+                    phoneField.placeholder = exampleNumber;
                 }
-                const countryCodePrefix = cleanDialingCode ? cleanDialingCode + ' ' : '';
-                phoneField.placeholder = countryCodePrefix + exampleNumber;
             }
             
             // Store current format info on field
@@ -1354,8 +1361,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             phoneField.addEventListener('input', phoneField._phoneFormatHandler);
             
-            // Inject country code into field value if not already present
-            if (selectedDialingCode) {
+            // Inject country code into field value if not already present (unless disabled)
+            if (selectedDialingCode && phoneField.dataset.phoneInjectCountryCode !== 'false') {
                 this.injectCountryCodeIntoPhoneField(phoneField, selectedDialingCode);
             }
             
@@ -1424,8 +1431,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             console.log('formatPhoneInputWithLibphonenumber called with value:', currentValue);
             
-            // Check if value contains country code prefix (before space)
-            const hasCountryCodePrefix = currentValue.includes(' ') && currentValue.startsWith('+');
+            // Check if country code injection is disabled
+            const injectCountryCode = field.dataset.phoneInjectCountryCode !== 'false';
+            
+            // Check if value contains country code prefix (before space) - only if injection is enabled
+            const hasCountryCodePrefix = injectCountryCode && currentValue.includes(' ') && currentValue.startsWith('+');
             let countryCodePrefix = '';
             let phoneNumberPart = currentValue;
             
@@ -1435,6 +1445,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 phoneNumberPart = parts.slice(1).join(' ');
             }
             
+            console.log('injectCountryCode:', injectCountryCode);
             console.log('hasCountryCodePrefix:', hasCountryCodePrefix);
             console.log('countryCodePrefix:', countryCodePrefix);
             console.log('phoneNumberPart:', phoneNumberPart);
@@ -1460,8 +1471,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             console.log('formattedPhoneNumber:', formattedPhoneNumber);
             
-            // Combine country code prefix with formatted phone number
-            const finalFormattedValue = countryCodePrefix + formattedPhoneNumber;
+            // For national formatting without country code injection, remove the country code from the formatted result
+            if (!injectCountryCode && formattedPhoneNumber.startsWith('+')) {
+                // Convert to national format
+                try {
+                    const phoneNumber = parsePhoneNumber(formattedPhoneNumber, field._currentCountryCode);
+                    if (phoneNumber && phoneNumber.isValid()) {
+                        formattedPhoneNumber = phoneNumber.formatNational();
+                    }
+                } catch (error) {
+                    // Keep the current formatting if parsing fails
+                    console.log('Phone parsing failed, keeping current format');
+                }
+            }
+            
+            // Combine country code prefix with formatted phone number (only if injection enabled)
+            const finalFormattedValue = injectCountryCode ? (countryCodePrefix + formattedPhoneNumber) : formattedPhoneNumber;
             
             console.log('finalFormattedValue:', finalFormattedValue);
             
@@ -1480,6 +1505,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     const phonePartNewLength = formattedPhoneNumber.length;
                     const lengthDiff = phonePartNewLength - phonePartOldLength;
                     newCursorPos = Math.max(countryCodePrefix.length, Math.min(cursorPos + lengthDiff, finalFormattedValue.length));
+                } else if (!injectCountryCode) {
+                    // For non-injection mode, simple cursor adjustment
+                    const lengthDiff = newLength - oldLength;
+                    newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, finalFormattedValue.length));
                 }
                 
                 // Set cursor position after a brief delay to ensure it takes effect
