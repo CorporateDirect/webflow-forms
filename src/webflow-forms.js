@@ -2475,6 +2475,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Find and populate fields with address component data attributes
             const fieldsToPopulate = form.querySelectorAll('[data-address-component]');
             console.log(`Found ${fieldsToPopulate.length} fields to populate`);
+            console.log('Fields found by [data-address-component] selector:', Array.from(fieldsToPopulate).map(f => ({
+                name: f.name || f.id,
+                addressComponent: f.dataset.addressComponent,
+                countryCode: f.dataset.countryCode,
+                googlePlaces: f.dataset.googlePlaces,
+                useFullName: f.dataset.useFullName
+            })));
             
             fieldsToPopulate.forEach(targetField => {
                 const componentTypes = targetField.dataset.addressComponent.split(',');
