@@ -2197,6 +2197,12 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
             // Handle input for predictions
             field.addEventListener('input', async (e) => {
+                // Skip processing if this was just auto-populated from a selection
+                if (field.dataset.autoPopulated === 'true') {
+                    field.dataset.autoPopulated = 'false'; // Reset flag
+                    return;
+                }
+                
                 const query = e.target.value.trim();
                 
                 if (query.length < 2) {
@@ -2374,20 +2380,23 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const prediction = suggestion.placePrediction || suggestion.queryPrediction;
                 if (!prediction) return;
 
-                // Set field value
-                field.value = prediction.text?.text || prediction.text || '';
-                
-                // Hide and clear dropdown completely
+                // Hide and clear dropdown immediately
                 dropdown.style.display = 'none';
                 dropdown.style.visibility = 'hidden';
                 dropdown.innerHTML = '';
                 
-                // Mark as auto-populated
+                // Set field value and mark as auto-populated BEFORE any async operations
+                const addressText = prediction.text?.text || prediction.text || '';
+                field.value = addressText;
                 field.dataset.autoPopulated = 'true';
                 field.classList.add('wf-auto-populated');
                 
+                console.log(`Address field set to: "${addressText}"`);
+                
                 // Only proceed with place details if it's a place prediction (not query prediction)
                 if (suggestion.placePrediction) {
+                    console.log('Fetching place details for address population...');
+                    
                     // Convert to Place object and fetch details
                     const place = suggestion.placePrediction.toPlace();
                     
@@ -2395,9 +2404,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         fields: ['addressComponents', 'formattedAddress', 'location', 'displayName']
                     });
 
-                    // Populate related fields if enabled
-                    if (field.dataset.populateFields === 'true') {
+                    console.log('Place details fetched:', place);
+
+                    // Populate related fields if enabled (should be enabled by default)
+                    const shouldPopulate = field.dataset.populateFields !== 'false'; // Default to true
+                    if (shouldPopulate) {
+                        console.log('Populating related address fields...');
                         this.populateAddressFields(place, field);
+                    } else {
+                        console.log('Address field population disabled via data-populate-fields="false"');
                     }
 
                     // Trigger custom event
@@ -2410,9 +2425,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
                     // Create new session token for next search
                     field._sessionToken = new google.maps.places.AutocompleteSessionToken();
+                } else {
+                    console.log('Query prediction selected - no additional field population');
                 }
             } catch (error) {
                 console.warn('Failed to get place details:', error);
+                // Make sure the address field still keeps its value even if place details fail
+                if (field.value === '') {
+                    const prediction = suggestion.placePrediction || suggestion.queryPrediction;
+                    const addressText = prediction?.text?.text || prediction?.text || '';
+                    if (addressText) {
+                        field.value = addressText;
+                        field.dataset.autoPopulated = 'true';
+                        field.classList.add('wf-auto-populated');
+                    }
+                }
             }
         },
 
@@ -2429,18 +2456,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Create address component map (updated for new API camelCase format)
             const addressMap = {};
             if (place.addressComponents) {
+                console.log('Raw address components from API:', place.addressComponents);
                 place.addressComponents.forEach(component => {
+                    console.log('Processing component:', component);
                     const types = component.types;
                     types.forEach(type => {
                         addressMap[type] = {
                             longText: component.longText,
                             shortText: component.shortText
                         };
+                        console.log(`  Mapped ${type}: ${component.longText} / ${component.shortText}`);
                     });
                 });
             }
             
-            console.log('Address component map:', addressMap);
+            console.log('Final address component map:', addressMap);
 
             // Find and populate fields with address component data attributes
             const fieldsToPopulate = form.querySelectorAll('[data-address-component]');
