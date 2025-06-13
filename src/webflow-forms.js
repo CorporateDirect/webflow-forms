@@ -25,9 +25,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             typingClass: 'wf-field-typing'
         },
 
-        // Phone formatting cache to avoid repeated lookups
-        phoneFormatCache: new Map(),
+        // Cache for country data and phone formatting
         countryDataCache: null,
+        phoneFormatCache: new Map(),
+
+        // Clear caches (useful for debugging)
+        clearCaches: function() {
+            this.countryDataCache = null;
+            this.phoneFormatCache.clear();
+        },
 
         // Get flag emoji for country ISO code
         getCountryFlag: function(isoCode) {
@@ -46,6 +52,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Return cached data if available
             if (this.countryDataCache) {
                 return this.countryDataCache;
+            }
+
+            // Check if libphonenumber is properly loaded
+            if (typeof getCountries !== 'function' || typeof getCountryCallingCode !== 'function') {
+                console.warn('libphonenumber not fully loaded, using fallback data');
+                return [
+                    { name: 'United States', countryCode: '+1', isoCode: 'US', flag: this.getCountryFlag('US') },
+                    { name: 'United Kingdom', countryCode: '+44', isoCode: 'GB', flag: this.getCountryFlag('GB') }
+                ];
             }
 
             try {
@@ -299,36 +314,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     'CW': 'Curaçao',
                     'BQ': 'Caribbean Netherlands',
                     'AW': 'Aruba',
-                    'AX': {
-                        mobile: '050 123 4567',
-                        fixed_line: '018 12345',
-                        toll_free: '0800 123 456',
-                        premium_rate: '0600 123 456'
-                    },
-                    'CC': {
-                        mobile: '0412 345 678',
-                        fixed_line: '08 9162 1234',
-                        toll_free: '1800 123 456',
-                        premium_rate: '1900 123 456'
-                    },
-                    'CX': {
-                        mobile: '0412 345 678',
-                        fixed_line: '08 9164 1234',
-                        toll_free: '1800 123 456',
-                        premium_rate: '1900 123 456'
-                    },
-                    'SH': {
-                        mobile: '1234',
-                        fixed_line: '1234',
-                        toll_free: '1234',
-                        premium_rate: '1234'
-                    },
-                    'TA': {
-                        mobile: '1234',
-                        fixed_line: '1234',
-                        toll_free: '1234',
-                        premium_rate: '1234'
-                    }
+                    'AX': 'Åland Islands',
+                    'CC': 'Cocos Islands',
+                    'CX': 'Christmas Island',
+                    'SH': 'Saint Helena',
+                    'TA': 'Tristan da Cunha'
                 };
 
                 for (const countryCode of countries) {
@@ -961,42 +951,72 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Setup country code select field
         setupCountryCodeSelect: function(field) {
-            // Check if searchable option is enabled
-            const isSearchable = field.dataset.countrySearchable !== 'false'; // Default to true
+            console.log('Setting up country code select for:', field.id || field.name);
             
-            if (isSearchable) {
-                this.createSearchableCountrySelect(field);
-            } else {
+            // Validate the field
+            if (!field || field.tagName !== 'SELECT') {
+                console.error('Invalid field passed to setupCountryCodeSelect:', field);
+                return;
+            }
+
+            try {
+                // Check if searchable option is enabled
+                const isSearchable = field.dataset.countrySearchable !== 'false'; // Default to true
+                
+                if (isSearchable) {
+                    this.createSearchableCountrySelect(field);
+                } else {
+                    this.createStandardCountrySelect(field);
+                }
+            } catch (error) {
+                console.error('Error setting up country code select:', error);
+                // Fallback to standard select
                 this.createStandardCountrySelect(field);
             }
         },
 
         // Create standard (non-searchable) country select
         createStandardCountrySelect: function(field) {
-            // Clear existing options except placeholder
-            const existingOptions = field.querySelectorAll('option');
-            const placeholderOption = existingOptions[0];
+            console.log('Creating standard country select');
             
-            // Clear all options
-            field.innerHTML = '';
-            
-            // Re-add placeholder if it existed
-            if (placeholderOption && (placeholderOption.value === '' || placeholderOption.textContent.trim() === '' || placeholderOption.hasAttribute('disabled'))) {
-                field.appendChild(placeholderOption);
+            try {
+                // Clear existing options except placeholder
+                const existingOptions = field.querySelectorAll('option');
+                const placeholderOption = existingOptions[0];
+                
+                // Clear all options
+                field.innerHTML = '';
+                
+                // Re-add placeholder if it existed and is actually a placeholder
+                if (placeholderOption && 
+                    (placeholderOption.value === '' || 
+                     placeholderOption.textContent.trim() === '' || 
+                     placeholderOption.hasAttribute('disabled') ||
+                     placeholderOption.hasAttribute('selected'))) {
+                    field.appendChild(placeholderOption);
+                }
+                
+                this.populateCountryOptions(field);
+                
+                console.log(`Standard country select created with ${field.options.length} options`);
+                
+            } catch (error) {
+                console.error('Error creating standard country select:', error);
             }
-            
-            this.populateCountryOptions(field);
         },
 
         // Create searchable country select
         createSearchableCountrySelect: function(field) {
-            // Store original field properties
-            const fieldName = field.name;
-            const fieldId = field.id;
-            const fieldClass = field.className;
-            const isRequired = field.required;
-            // Get placeholder from disabled option, original field placeholder, or leave empty
-            const placeholder = field.querySelector('option[disabled]')?.textContent || field.placeholder || '';
+            console.log('Creating searchable country select');
+            
+            try {
+                // Store original field properties
+                const fieldName = field.name;
+                const fieldId = field.id;
+                const fieldClass = field.className;
+                const isRequired = field.required;
+                // Get placeholder from disabled option, original field placeholder, or leave empty
+                const placeholder = field.querySelector('option[disabled]')?.textContent || field.placeholder || 'Select or search for a country...';
             
             // Create container for proper dropdown positioning (but without problematic styling)
             const container = document.createElement('div');
@@ -1070,6 +1090,14 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 searchable: true,
                 countriesCount: countries.length 
             });
+            
+            console.log(`Searchable country select created with ${countries.length} countries`);
+            
+        } catch (error) {
+            console.error('Error creating searchable country select:', error);
+            // Fallback to standard select
+            this.createStandardCountrySelect(field);
+        }
         },
 
         // Get formatted countries data
@@ -1182,10 +1210,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     option.style.backgroundColor = '';
                 });
                 
-                // Add click handler
-                option.addEventListener('click', () => {
-                    this.selectCountryOption(option, searchInput, hiddenSelect, dropdownList, originalField);
-                });
+                // Click handler is now managed by event delegation in attachSearchableEvents
                 
                 dropdownList.appendChild(option);
                 
@@ -1255,6 +1280,14 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Handle keyboard navigation
             searchInput.addEventListener('keydown', (e) => {
                 this.handleCountryKeyboardNavigation(e, dropdownList, searchInput, hiddenSelect, originalField);
+            });
+            
+            // Add click handlers to dropdown options - THIS WAS MISSING!
+            dropdownList.addEventListener('click', (e) => {
+                const option = e.target.closest('[data-country-option="true"]');
+                if (option) {
+                    this.selectCountryOption(option, searchInput, hiddenSelect, dropdownList, originalField);
+                }
             });
         },
 
@@ -1393,24 +1426,29 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Populate standard country options (for non-searchable)
         populateCountryOptions: function(field) {
-            const countries = this.getFormattedCountries(field);
-            
-            countries.forEach(country => {
-                const option = document.createElement('option');
-                option.value = country.value;
-                option.textContent = country.displayText;
-                option.dataset.countryName = country.name;
-                option.dataset.countryCode = country.countryCode;
-                option.dataset.countryFlag = country.flag;
+            try {
+                const countries = this.getFormattedCountries(field);
                 
-                field.appendChild(option);
-            });
-            
-            // Trigger custom event
-            this.triggerCustomEvent(field, 'countryCodeSetup', { 
-                searchable: false,
-                countriesCount: countries.length 
-            });
+                countries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country.value;
+                    option.textContent = country.displayText;
+                    option.dataset.countryName = country.name;
+                    option.dataset.countryCode = country.countryCode;
+                    option.dataset.countryFlag = country.flag;
+                    
+                    field.appendChild(option);
+                });
+                
+                // Trigger custom event
+                this.triggerCustomEvent(field, 'countryCodeSetup', { 
+                    searchable: false,
+                    countriesCount: countries.length 
+                });
+                
+            } catch (error) {
+                console.error('Error populating country options:', error);
+            }
         },
 
         // Setup dynamic phone formatting based on country code selection

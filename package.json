@@ -22,16 +22,16 @@
     "form-validation",
     "form-handling"
   ],
-  "author": "Your Name",
+  "author": "Chris Brummer",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/webflow-forms.git"
+    "url": "https://github.com/chrisbrummer/webflow-forms.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/webflow-forms/issues"
+    "url": "https://github.com/chrisbrummer/webflow-forms/issues"
   },
-  "homepage": "https://github.com/yourusername/webflow-forms#readme",
+  "homepage": "https://github.com/chrisbrummer/webflow-forms#readme",
   "devDependencies": {
     "@babel/core": "^7.22.0",
     "@babel/preset-env": "^7.22.0",
