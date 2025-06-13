@@ -233,7 +233,9 @@
     
     <script>
         // Enhanced form behavior and debugging
-        document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 CUSTOM: Script is loading...');
+        
+        function initializeCustomFeatures() {
             console.log('🚀 CUSTOM: Form loaded, setting up enhanced features...');
             
             // DEBUG: Check if our custom JavaScript is running
@@ -564,19 +566,32 @@
             }
             
             // Form submission handling
-            document.querySelector('form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Collect all form data
-                const formData = new FormData(this);
-                const data = Object.fromEntries(formData);
-                
-                console.log('Form data:', data);
-                
-                // Show success message
-                alert('Form data logged to console! Check developer tools.');
-            });
-        });
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Collect all form data
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData);
+                    
+                    console.log('Form data:', data);
+                    
+                    // Show success message
+                    alert('Form data logged to console! Check developer tools.');
+                });
+            }
+        }
+        
+        // Initialize immediately and also on DOMContentLoaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCustomFeatures);
+        } else {
+            initializeCustomFeatures();
+        }
+        
+        // Also try after a small delay in case DOMContentLoaded already fired
+        setTimeout(initializeCustomFeatures, 100);
         
         // Error handling for Google Places API
         window.addEventListener('error', function(e) {
