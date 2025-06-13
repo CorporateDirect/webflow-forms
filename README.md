@@ -5,7 +5,7 @@
 Enhance your Webflow forms with intelligent features like Google Places autocomplete, dynamic phone formatting, country dropdowns, input validation, conditional fields, and more. Works seamlessly alongside Webflow's core functionality and any form submission service.
 
 [![npm version](https://badge.fury.io/js/webflow-forms.svg)](https://www.npmjs.com/package/webflow-forms)
-[![jsDelivr hits](https://data.jsdelivr.com/v1/package/gh/chrisbrummer/webflow-forms/badge)](https://www.jsdelivr.com/package/gh/chrisbrummer/webflow-forms)
+[![jsDelivr hits](https://data.jsdelivr.com/v1/package/gh/corporatedirect/webflow-forms/badge)](https://www.jsdelivr.com/package/gh/corporatedirect/webflow-forms)
 
 ## ✨ Key Features
 
@@ -26,7 +26,7 @@ Enhance your Webflow forms with intelligent features like Google Places autocomp
 
 ```html
 <!-- Latest stable version -->
-<script src="https://cdn.jsdelivr.net/gh/chrisbrummer/webflow-forms@latest/dist/webflow-forms.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/corporatedirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
 ### NPM
@@ -185,7 +185,7 @@ The library automatically enhances form fields that include specific data attrib
 ```html
 <!-- Add BEFORE webflow-forms script -->
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
-<script src="https://cdn.jsdelivr.net/gh/chrisbrummer/webflow-forms@latest/dist/webflow-forms.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/corporatedirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
 ### Basic Implementation
@@ -608,9 +608,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- **Repository**: [GitHub](https://github.com/chrisbrummer/webflow-forms)
-- **Issues**: [Report Issues](https://github.com/chrisbrummer/webflow-forms/issues)
-- **CDN**: [jsDelivr](https://www.jsdelivr.com/package/gh/chrisbrummer/webflow-forms)
+- **Repository**: [GitHub](https://github.com/corporatedirect/webflow-forms)
+- **Issues**: [Report Issues](https://github.com/corporatedirect/webflow-forms/issues)
+- **CDN**: [jsDelivr](https://www.jsdelivr.com/package/gh/corporatedirect/webflow-forms)
 - **NPM**: [Package](https://www.npmjs.com/package/webflow-forms)
 
 ---

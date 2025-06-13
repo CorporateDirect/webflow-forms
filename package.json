@@ -26,12 +26,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chrisbrummer/webflow-forms.git"
+    "url": "https://github.com/corporatedirect/webflow-forms.git"
   },
   "bugs": {
-    "url": "https://github.com/chrisbrummer/webflow-forms/issues"
+    "url": "https://github.com/corporatedirect/webflow-forms/issues"
   },
-  "homepage": "https://github.com/chrisbrummer/webflow-forms#readme",
+  "homepage": "https://github.com/corporatedirect/webflow-forms#readme",
   "devDependencies": {
     "@babel/core": "^7.22.0",
     "@babel/preset-env": "^7.22.0",
