@@ -964,6 +964,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
 
+            // Prevent duplicate setup
+            if (field._countryCodeSetup) {
+                console.log('Country code select already setup for field:', field.id || field.name);
+                return;
+            }
+            
+            // Mark as setup to prevent duplicates
+            field._countryCodeSetup = true;
+
             try {
                 // Check if searchable option is enabled
                 const isSearchable = field.dataset.countrySearchable !== 'false'; // Default to true
@@ -1456,9 +1465,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
         },
 
-        // Setup dynamic phone formatting based on country code selection
+        // Setup dynamic phone formatting based on country selection
         setupDynamicPhoneFormatting: function(field) {
-            // Find the country code selector
+            // Find the associated country code selector
             const countrySelector = this.findCountryCodeSelector(field);
             
             if (!countrySelector) {
@@ -1466,38 +1475,66 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
             
-            // Store reference to phone field on country selector
+            // Prevent duplicate setup
+            if (field._phoneFormatSetup) {
+                console.log('Phone formatting already setup for field:', field.id || field.name);
+                return;
+            }
+            
+            // Mark as setup to prevent duplicates
+            field._phoneFormatSetup = true;
+            
+            // Initialize phone fields array on country selector if not exists
             if (!countrySelector._phoneFields) {
                 countrySelector._phoneFields = [];
             }
-            countrySelector._phoneFields.push(field);
+            
+            // Only add if not already in the array
+            if (!countrySelector._phoneFields.includes(field)) {
+                countrySelector._phoneFields.push(field);
+            }
             
             // Set initial format if country is already selected
             this.updatePhoneFormat(field, countrySelector);
             
-            // Listen for country changes
-            const updateFormat = () => {
-                setTimeout(() => this.updatePhoneFormat(field, countrySelector), 0);
-            };
-            
-            // Handle both standard select and searchable country selects
-            if (countrySelector.tagName === 'SELECT') {
-                countrySelector.addEventListener('change', updateFormat);
-            } else if (countrySelector.dataset.countrySearch === 'true') {
-                // For searchable country selects, listen to the hidden select
-                const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
-                if (hiddenSelect) {
-                    hiddenSelect.addEventListener('change', updateFormat);
+            // Listen for country changes - but only add listener once
+            if (!countrySelector._phoneFormatListenerAdded) {
+                const updateFormat = () => {
+                    // Use a small delay to ensure DOM updates are complete
+                    setTimeout(() => {
+                        if (countrySelector._phoneFields) {
+                            countrySelector._phoneFields.forEach(phoneField => {
+                                this.updatePhoneFormat(phoneField, countrySelector);
+                            });
+                        }
+                    }, 10);
+                };
+                
+                // Handle both standard select and searchable country selects
+                if (countrySelector.tagName === 'SELECT') {
+                    countrySelector.addEventListener('change', updateFormat);
+                } else if (countrySelector.dataset.countrySearch === 'true') {
+                    // For searchable country selects, listen to the hidden select
+                    const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
+                    if (hiddenSelect) {
+                        hiddenSelect.addEventListener('change', updateFormat);
+                    }
                 }
+                
+                // Mark listener as added
+                countrySelector._phoneFormatListenerAdded = true;
             }
             
-            // Also listen for custom country selection events
-            document.addEventListener('webflowField:countrySelected', (e) => {
-                if (e.detail.field === countrySelector || 
-                    (countrySelector._phoneFields && countrySelector._phoneFields.includes(field))) {
-                    this.updatePhoneFormat(field, countrySelector);
-                }
-            });
+            // Also listen for custom country selection events - but only once per field
+            if (!field._customEventListenerAdded) {
+                document.addEventListener('webflowField:countrySelected', (e) => {
+                    if (e.detail.field === countrySelector || 
+                        (countrySelector._phoneFields && countrySelector._phoneFields.includes(field))) {
+                        this.updatePhoneFormat(field, countrySelector);
+                    }
+                });
+                field._customEventListenerAdded = true;
+            }
             
             this.triggerCustomEvent(field, 'phoneFormatSetup', { 
                 countrySelector: countrySelector 
@@ -2059,6 +2096,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Skip Google Places autocomplete for SELECT fields (they get populated but don't need autocomplete)
             if (field.tagName === 'SELECT') {
                 console.log('Skipping Google Places autocomplete for SELECT field - will be populated when address is selected');
+                // Skip manual edit tracking for non-input fields
+                console.log('Skipping manual edit tracking for Google Places field:', field.id || field.name);
                 return;
             }
             
@@ -2068,13 +2107,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
             
-            // Check if Google Places API is loaded
-            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-                console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>');
+            // Check if Google Places API is loaded with better detection
+            if (typeof google === 'undefined' || 
+                !google.maps || 
+                !google.maps.places || 
+                !google.maps.places.AutocompleteService ||
+                !google.maps.places.PlacesService) {
+                console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&loading=async"></script>');
                 
                 // Retry after a delay in case API is still loading
                 setTimeout(() => {
-                    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    if (typeof google !== 'undefined' && 
+                        google.maps && 
+                        google.maps.places &&
+                        google.maps.places.AutocompleteService &&
+                        google.maps.places.PlacesService) {
                         console.log('Google Places API loaded after delay, retrying setup...');
                         this.setupGooglePlaces(field);
                     }
