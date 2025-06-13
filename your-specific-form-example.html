@@ -308,29 +308,57 @@
                 const addressCountryField = document.querySelector('[data-address-component="country"]');
                 const phoneCountryDropdown = document.querySelector('[data-country-code="true"]');
                 
+                console.log('🔍 DEBUG - Address country field:', addressCountryField);
+                console.log('🔍 DEBUG - Phone country dropdown:', phoneCountryDropdown);
+                
                 if (addressCountryField && phoneCountryDropdown && addressCountryField.value) {
                     const countryName = addressCountryField.value.trim();
                     console.log('🔄 Syncing phone country dropdown with address country:', countryName);
                     
-                    // Wait for the country dropdown to be fully populated by the library
-                    setTimeout(() => {
-                        // Check if this is a searchable country dropdown (with hidden select)
-                        const container = phoneCountryDropdown.closest('[data-country-select-container]');
-                        const isSearchableDropdown = container && phoneCountryDropdown.dataset.countrySearch === 'true';
-                        
-                        if (isSearchableDropdown) {
-                            // Handle searchable country dropdown
-                            const hiddenSelect = container.querySelector('select[style*="display: none"]');
-                            if (hiddenSelect) {
-                                updateCountryDropdown(hiddenSelect, countryName, 'searchable dropdown');
-                                // Also update the visible search input
-                                phoneCountryDropdown.value = countryName;
-                            }
+                    // First attempt immediately (in case dropdown is already ready)
+                    attemptCountrySync(phoneCountryDropdown, countryName);
+                    
+                    // Then try again with increasing delays to ensure dropdown is populated
+                    setTimeout(() => attemptCountrySync(phoneCountryDropdown, countryName), 500);
+                    setTimeout(() => attemptCountrySync(phoneCountryDropdown, countryName), 1000);
+                    setTimeout(() => attemptCountrySync(phoneCountryDropdown, countryName), 2000);
+                }
+            }
+            
+            function attemptCountrySync(phoneCountryDropdown, countryName) {
+                console.log('🔄 Attempting country sync for:', countryName);
+                
+                // Check if this is a searchable country dropdown (with hidden select)
+                const container = phoneCountryDropdown.closest('[data-country-select-container]');
+                const isSearchableDropdown = container && phoneCountryDropdown.dataset.countrySearch === 'true';
+                
+                console.log('🔍 DEBUG - Container found:', !!container);
+                console.log('🔍 DEBUG - Is searchable dropdown:', isSearchableDropdown);
+                
+                if (isSearchableDropdown) {
+                    // Handle searchable country dropdown
+                    const hiddenSelect = container.querySelector('select[style*="display: none"]');
+                    console.log('🔍 DEBUG - Hidden select found:', !!hiddenSelect);
+                    if (hiddenSelect) {
+                        const options = hiddenSelect.querySelectorAll('option');
+                        console.log('🔍 DEBUG - Hidden select has', options.length, 'options');
+                        if (options.length > 1) { // More than just empty option
+                            updateCountryDropdown(hiddenSelect, countryName, 'searchable dropdown');
+                            // Also update the visible search input
+                            phoneCountryDropdown.value = countryName;
                         } else {
-                            // Handle standard select dropdown
-                            updateCountryDropdown(phoneCountryDropdown, countryName, 'standard dropdown');
+                            console.log('⏳ Hidden select not yet populated, will retry...');
                         }
-                    }, 750); // Longer delay to ensure dropdown is populated
+                    }
+                } else {
+                    // Handle standard select dropdown
+                    const options = phoneCountryDropdown.querySelectorAll('option');
+                    console.log('🔍 DEBUG - Standard select has', options.length, 'options');
+                    if (options.length > 1) { // More than just empty option
+                        updateCountryDropdown(phoneCountryDropdown, countryName, 'standard dropdown');
+                    } else {
+                        console.log('⏳ Standard select not yet populated, will retry...');
+                    }
                 }
             }
             
@@ -339,41 +367,98 @@
                 let matchFound = false;
                 
                 console.log(`🔍 Searching ${dropdownType} with ${options.length} options for: "${countryName}"`);
+                console.log('🔍 First 5 options:', Array.from(options).slice(0, 5).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
                 
-                // Try exact matches first
-                for (const option of options) {
-                    const optionText = option.textContent.toLowerCase().trim();
-                    const optionValue = option.value.toLowerCase().trim();
-                    
-                    if (optionText.includes(countryName.toLowerCase()) || 
-                        optionValue.includes(countryName.toLowerCase()) ||
-                        countryName.toLowerCase().includes(optionText)) {
-                        
-                        selectElement.value = option.value;
-                        matchFound = true;
-                        console.log(`✅ Phone country updated to: "${option.textContent}" (${dropdownType})`);
-                        
-                        // Trigger change event to update phone formatting
-                        const changeEvent = new Event('change', { bubbles: true });
-                        selectElement.dispatchEvent(changeEvent);
-                        
-                        // Trigger custom event for the library
-                        const customEvent = new CustomEvent('webflowField:countrySelected', {
-                            bubbles: true,
-                            detail: {
-                                value: option.value,
-                                name: option.textContent,
-                                field: selectElement
-                            }
-                        });
-                        selectElement.dispatchEvent(customEvent);
+                // Country name mapping for better matching
+                const countryMappings = {
+                    'United States': ['United States', 'USA', 'US', 'America'],
+                    'United Kingdom': ['United Kingdom', 'UK', 'Britain', 'Great Britain', 'GB'],
+                    'Canada': ['Canada', 'CA'],
+                    'Australia': ['Australia', 'AU'],
+                    'Germany': ['Germany', 'Deutschland', 'DE'],
+                    'France': ['France', 'FR'],
+                    'Italy': ['Italy', 'Italia', 'IT'],
+                    'Spain': ['Spain', 'España', 'ES'],
+                    'Netherlands': ['Netherlands', 'Holland', 'NL'],
+                    'Japan': ['Japan', 'JP'],
+                    'South Korea': ['South Korea', 'Korea', 'KR'],
+                    'China': ['China', 'CN'],
+                    'India': ['India', 'IN'],
+                    'Brazil': ['Brazil', 'Brasil', 'BR'],
+                    'Mexico': ['Mexico', 'MX'],
+                    'Russia': ['Russia', 'RU'],
+                    'South Africa': ['South Africa', 'ZA']
+                };
+                
+                // Get possible variations for the country name
+                let searchTerms = [countryName];
+                for (const [standardName, variations] of Object.entries(countryMappings)) {
+                    if (variations.some(variation => variation.toLowerCase() === countryName.toLowerCase())) {
+                        searchTerms = variations;
                         break;
                     }
                 }
                 
+                console.log(`🔍 Searching for variations:`, searchTerms);
+                
+                // Try exact matches first, then partial matches
+                for (const searchTerm of searchTerms) {
+                    for (const option of options) {
+                        const optionText = option.textContent.toLowerCase().trim();
+                        const optionValue = option.value.toLowerCase().trim();
+                        
+                        // Try exact matches first
+                        if (optionText === searchTerm.toLowerCase() || 
+                            optionValue === searchTerm.toLowerCase()) {
+                            
+                            selectElement.value = option.value;
+                            matchFound = true;
+                            console.log(`✅ Phone country updated (exact match): "${option.textContent}" (${dropdownType})`);
+                            break;
+                        }
+                    }
+                    if (matchFound) break;
+                }
+                
+                // If no exact match, try partial matches
                 if (!matchFound) {
+                    for (const searchTerm of searchTerms) {
+                        for (const option of options) {
+                            const optionText = option.textContent.toLowerCase().trim();
+                            const optionValue = option.value.toLowerCase().trim();
+                            
+                            if (optionText.includes(searchTerm.toLowerCase()) || 
+                                optionValue.includes(searchTerm.toLowerCase()) ||
+                                searchTerm.toLowerCase().includes(optionText)) {
+                                
+                                selectElement.value = option.value;
+                                matchFound = true;
+                                console.log(`✅ Phone country updated (partial match): "${option.textContent}" (${dropdownType})`);
+                                break;
+                            }
+                        }
+                        if (matchFound) break;
+                    }
+                }
+                
+                if (matchFound) {
+                    // Trigger change event to update phone formatting
+                    const changeEvent = new Event('change', { bubbles: true });
+                    selectElement.dispatchEvent(changeEvent);
+                    
+                    // Trigger custom event for the library
+                    const customEvent = new CustomEvent('webflowField:countrySelected', {
+                        bubbles: true,
+                        detail: {
+                            value: selectElement.value,
+                            name: selectElement.options[selectElement.selectedIndex].textContent,
+                            field: selectElement
+                        }
+                    });
+                    selectElement.dispatchEvent(customEvent);
+                } else {
                     console.log(`⚠️ No matching phone country found in ${dropdownType} for: "${countryName}"`);
-                    console.log('Available options:', Array.from(options).slice(0, 5).map(opt => opt.textContent));
+                    console.log('All available options:', Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
                 }
             }
             
