@@ -1050,12 +1050,26 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Add a data attribute for identification instead of a class
             searchInput.dataset.countrySearch = 'true';
             
+            // Copy all data attributes from original field to search input
+            for (const key in field.dataset) {
+                if (field.dataset.hasOwnProperty(key)) {
+                    searchInput.dataset[key] = field.dataset[key];
+                }
+            }
+            
             // Create hidden select for form submission
             const hiddenSelect = document.createElement('select');
             hiddenSelect.name = fieldName;
             hiddenSelect.required = isRequired;
             hiddenSelect.style.display = 'none';
             if (fieldId) hiddenSelect.id = fieldId;
+            
+            // Copy all data attributes from original field to hidden select
+            for (const key in field.dataset) {
+                if (field.dataset.hasOwnProperty(key)) {
+                    hiddenSelect.dataset[key] = field.dataset[key];
+                }
+            }
             
             // Create dropdown list
             const dropdownList = document.createElement('div');
