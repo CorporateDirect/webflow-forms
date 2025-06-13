@@ -2473,14 +2473,29 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             console.log('Final address component map:', addressMap);
 
             // Find and populate fields with address component data attributes
-            const fieldsToPopulate = form.querySelectorAll('[data-address-component]');
-            console.log(`Found ${fieldsToPopulate.length} fields to populate`);
-            console.log('Fields found by [data-address-component] selector:', Array.from(fieldsToPopulate).map(f => ({
+            // Only include fields that are meant for Google Places population
+            const allAddressFields = form.querySelectorAll('[data-address-component]');
+            const fieldsToPopulate = Array.from(allAddressFields).filter(field => {
+                // Include the field if:
+                // 1. It's not a country field, OR
+                // 2. It's a country field with data-google-places="true"
+                const isCountryField = field.dataset.addressComponent?.includes('country');
+                return !isCountryField || field.dataset.googlePlaces === 'true';
+            });
+            
+            console.log(`Found ${allAddressFields.length} total address fields, ${fieldsToPopulate.length} eligible for Google Places population`);
+            console.log('All address fields found:', Array.from(allAddressFields).map(f => ({
                 name: f.name || f.id,
                 addressComponent: f.dataset.addressComponent,
                 countryCode: f.dataset.countryCode,
                 googlePlaces: f.dataset.googlePlaces,
-                useFullName: f.dataset.useFullName
+                useFullName: f.dataset.useFullName,
+                eligible: !f.dataset.addressComponent?.includes('country') || f.dataset.googlePlaces === 'true'
+            })));
+            console.log('Fields eligible for population:', fieldsToPopulate.map(f => ({
+                name: f.name || f.id,
+                addressComponent: f.dataset.addressComponent,
+                googlePlaces: f.dataset.googlePlaces
             })));
             
             fieldsToPopulate.forEach(targetField => {
