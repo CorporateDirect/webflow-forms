@@ -234,7 +234,24 @@
     <script>
         // Enhanced form behavior and debugging
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Form loaded, setting up enhanced features...');
+            console.log('🚀 CUSTOM: Form loaded, setting up enhanced features...');
+            
+            // DEBUG: Check if our custom JavaScript is running
+            console.log('🔍 CUSTOM: Custom JavaScript is executing!');
+            
+            // DEBUG: Check all country-related fields in the DOM
+            const allCountryFields = document.querySelectorAll('[data-address-component="country"]');
+            console.log('🔍 CUSTOM: Found fields with data-address-component="country":', allCountryFields.length);
+            allCountryFields.forEach((field, index) => {
+                console.log(`  ${index + 1}. Field name="${field.name}", id="${field.id}", data-use-full-name="${field.dataset.useFullName}"`);
+            });
+            
+            // DEBUG: Check phone country dropdowns
+            const phoneCountryDropdowns = document.querySelectorAll('[data-country-code="true"]');
+            console.log('🔍 CUSTOM: Found fields with data-country-code="true":', phoneCountryDropdowns.length);
+            phoneCountryDropdowns.forEach((field, index) => {
+                console.log(`  ${index + 1}. Field name="${field.name}", id="${field.id}"`);
+            });
             
                          // Track user manual edits to prevent auto-overwrite
              const trackManualEdits = (field) => {
@@ -321,7 +338,43 @@
             });
             
             document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
-                console.log('📝 Fields populated:', e.detail.populatedFields);
+                console.log('📝 CUSTOM: Fields populated:', e.detail.populatedFields);
+                
+                // DEBUG: Fix country field value if it's using country code instead of full name
+                setTimeout(() => {
+                    const countryFields = document.querySelectorAll('[data-address-component="country"][data-use-full-name="true"]');
+                    console.log('🔍 CUSTOM: Checking country fields for data-use-full-name fix...');
+                    
+                    countryFields.forEach(field => {
+                        console.log(`🔍 CUSTOM: Country field ${field.name || field.id} has value: "${field.value}"`);
+                        
+                        if (field.value === 'US' || field.value === 'USA') {
+                            console.log('🔧 CUSTOM: Fixing country field - changing "US" to "United States"');
+                            field.value = 'United States';
+                            field.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        
+                        // Check other common country codes that might need fixing
+                        const countryCodeToName = {
+                            'US': 'United States',
+                            'USA': 'United States',
+                            'CA': 'Canada',
+                            'GB': 'United Kingdom',
+                            'UK': 'United Kingdom',
+                            'AU': 'Australia',
+                            'DE': 'Germany',
+                            'FR': 'France',
+                            'JP': 'Japan',
+                            'CN': 'China'
+                        };
+                        
+                        if (countryCodeToName[field.value]) {
+                            console.log(`🔧 CUSTOM: Converting "${field.value}" to "${countryCodeToName[field.value]}"`);
+                            field.value = countryCodeToName[field.value];
+                            field.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }, 50);
                 
                 // Highlight populated fields briefly
                 setTimeout(() => {
