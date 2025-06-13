@@ -2210,10 +2210,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     // Create request for new API
                     const request = {
                         input: query,
-                        sessionToken: sessionToken,
-                        includedPrimaryTypes: field.dataset.placesTypes ? 
-                            field.dataset.placesTypes.split(',') : ['address']
+                        sessionToken: sessionToken
                     };
+                    
+                    // Only add includedPrimaryTypes if explicitly set via data attribute
+                    if (field.dataset.placesTypes) {
+                        request.includedPrimaryTypes = field.dataset.placesTypes.split(',');
+                    }
 
                     if (countryRestrictions) {
                         request.includedRegionCodes = countryRestrictions;
