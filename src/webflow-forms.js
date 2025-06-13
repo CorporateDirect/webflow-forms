@@ -2062,6 +2062,12 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
             
+            // Check if already initialized to prevent duplicates
+            if (field._placesDropdown) {
+                console.log('Google Places already initialized for this field');
+                return;
+            }
+            
             // Check if Google Places API is loaded
             if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
                 console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>');
@@ -2097,10 +2103,25 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 border-radius: 0 0 4px 4px;
                 max-height: 200px;
                 overflow-y: auto;
-                z-index: 1000;
+                z-index: 9999;
                 display: none;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                pointer-events: auto;
+                visibility: hidden;
             `;
+            
+            // Function to show dropdown
+            const showDropdown = () => {
+                dropdown.style.display = 'block';
+                dropdown.style.visibility = 'visible';
+            };
+            
+            // Function to hide dropdown
+            const hideDropdownCompletely = () => {
+                dropdown.style.display = 'none';
+                dropdown.style.visibility = 'hidden';
+                dropdown.innerHTML = '';
+            };
 
             // Position field container relatively
             const fieldContainer = field.parentElement;
@@ -2129,7 +2150,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const query = e.target.value.trim();
                 
                 if (query.length < 2) {
-                    dropdown.style.display = 'none';
+                    hideDropdownCompletely();
+                    currentPredictions = [];
+                    selectedIndex = -1;
                     return;
                 }
 
@@ -2150,7 +2173,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         this.renderPredictions(dropdown, predictions, field, service);
                         selectedIndex = -1;
                     } else {
-                        dropdown.style.display = 'none';
+                        hideDropdownCompletely();
+                        currentPredictions = [];
+                        selectedIndex = -1;
                     }
                 });
             });
@@ -2177,17 +2202,28 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         }
                         break;
                     case 'Escape':
-                        dropdown.style.display = 'none';
+                        hideDropdownCompletely();
                         selectedIndex = -1;
                         break;
                 }
             });
 
             // Hide dropdown when clicking outside
-            document.addEventListener('click', (e) => {
+            const hideDropdown = (e) => {
                 if (!field.contains(e.target) && !dropdown.contains(e.target)) {
-                    dropdown.style.display = 'none';
+                    hideDropdownCompletely();
                 }
+            };
+            document.addEventListener('click', hideDropdown);
+            
+            // Also hide on blur
+            field.addEventListener('blur', (e) => {
+                // Small delay to allow click events to fire first
+                setTimeout(() => {
+                    if (!dropdown.contains(document.activeElement)) {
+                        hideDropdownCompletely();
+                    }
+                }, 150);
             });
 
             // Store references for cleanup
@@ -2246,6 +2282,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
             
             dropdown.style.display = 'block';
+            dropdown.style.visibility = 'visible';
         },
 
         // Update visual selection in dropdown
@@ -2264,7 +2301,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         selectPrediction: function(prediction, field, service, dropdown) {
             // Set field value
             field.value = prediction.description;
+            
+            // Hide and clear dropdown completely
             dropdown.style.display = 'none';
+            dropdown.style.visibility = 'hidden';
+            dropdown.innerHTML = '';
             
             // Mark as auto-populated
             field.dataset.autoPopulated = 'true';
