@@ -2981,23 +2981,48 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.log(`📞 Processing dropdown ${index + 1}: ${dropdown.name || dropdown.id}`);
                 console.log(`📞 Dropdown tag: ${dropdown.tagName}, type: ${dropdown.type}`);
                 
-                // Check if it's a searchable dropdown in a container
-                const container = dropdown.closest('[data-country-select-container]');
-                if (container) {
-                    console.log(`📞 Searchable dropdown detected in container`);
-                    const searchInput = container.querySelector('[data-country-search]');
-                    const hiddenSelect = container.querySelector('select[style*="display: none"]');
+                // Check if this field has been enhanced into a searchable dropdown
+                // Look for the enhanced searchable input with "_search" suffix
+                const searchInputId = `${dropdown.id}_search`;
+                const searchInput = document.getElementById(searchInputId);
+                
+                console.log(`📞 Looking for searchable input with id: ${searchInputId}`);
+                console.log(`📞 Searchable input found: ${!!searchInput}`);
+                
+                if (searchInput) {
+                    console.log(`📞 Enhanced searchable dropdown detected`);
                     
-                    console.log(`📞 Container elements - searchInput: ${!!searchInput}, hiddenSelect: ${!!hiddenSelect}`);
+                    // Find the container and hidden select
+                    const container = searchInput.closest('[data-country-select-container]');
+                    const hiddenSelect = container ? container.querySelector('select[style*="display: none"]') : dropdown;
                     
-                    if (searchInput && hiddenSelect) {
+                    console.log(`📞 Container found: ${!!container}`);
+                    console.log(`📞 Hidden select found: ${!!hiddenSelect}`);
+                    
+                    if (hiddenSelect) {
                         this.syncSearchableCountryDropdown(searchInput, hiddenSelect, countryName, countryCode);
                     } else {
-                        console.log(`⚠️ Missing searchable dropdown elements`);
+                        console.log(`⚠️ Could not find hidden select for searchable dropdown`);
                     }
                 } else {
-                    console.log(`📞 Standard dropdown detected (no container)`);
-                    this.syncStandardCountryDropdown(dropdown, countryName, countryCode);
+                    // Check if it's in a container (library-created searchable dropdown)
+                    const container = dropdown.closest('[data-country-select-container]');
+                    if (container) {
+                        console.log(`📞 Library-created searchable dropdown detected in container`);
+                        const containerSearchInput = container.querySelector('[data-country-search]');
+                        const hiddenSelect = container.querySelector('select[style*="display: none"]');
+                        
+                        console.log(`📞 Container elements - searchInput: ${!!containerSearchInput}, hiddenSelect: ${!!hiddenSelect}`);
+                        
+                        if (containerSearchInput && hiddenSelect) {
+                            this.syncSearchableCountryDropdown(containerSearchInput, hiddenSelect, countryName, countryCode);
+                        } else {
+                            console.log(`⚠️ Missing searchable dropdown elements in container`);
+                        }
+                    } else {
+                        console.log(`📞 Standard dropdown detected (no container)`);
+                        this.syncStandardCountryDropdown(dropdown, countryName, countryCode);
+                    }
                 }
             });
         },
