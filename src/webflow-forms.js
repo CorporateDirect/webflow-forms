@@ -298,7 +298,37 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     'SX': 'Sint Maarten',
                     'CW': 'Curaçao',
                     'BQ': 'Caribbean Netherlands',
-                    'AW': 'Aruba'
+                    'AW': 'Aruba',
+                    'AX': {
+                        mobile: '050 123 4567',
+                        fixed_line: '018 12345',
+                        toll_free: '0800 123 456',
+                        premium_rate: '0600 123 456'
+                    },
+                    'CC': {
+                        mobile: '0412 345 678',
+                        fixed_line: '08 9162 1234',
+                        toll_free: '1800 123 456',
+                        premium_rate: '1900 123 456'
+                    },
+                    'CX': {
+                        mobile: '0412 345 678',
+                        fixed_line: '08 9164 1234',
+                        toll_free: '1800 123 456',
+                        premium_rate: '1900 123 456'
+                    },
+                    'SH': {
+                        mobile: '1234',
+                        fixed_line: '1234',
+                        toll_free: '1234',
+                        premium_rate: '1234'
+                    },
+                    'TA': {
+                        mobile: '1234',
+                        fixed_line: '1234',
+                        toll_free: '1234',
+                        premium_rate: '1234'
+                    }
                 };
 
                 for (const countryCode of countries) {
@@ -347,16 +377,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 const priorityMapping = {
                     '1': ['US', 'CA'],      // +1: US first, then Canada
                     '7': ['RU', 'KZ'],      // +7: Russia first, then Kazakhstan
-                    '358': ['FI', 'AX'],    // +358: Finland first, then Åland Islands
-                    '44': ['GB', 'GG', 'IM', 'JE'], // +44: UK first, then dependencies
                     '33': ['FR', 'MC'],     // +33: France first, then Monaco
                     '39': ['IT', 'SM', 'VA'], // +39: Italy first, then San Marino, Vatican
-                    '47': ['NO', 'SJ'],     // +47: Norway first, then Svalbard
+                    '44': ['GB', 'GG', 'IM', 'JE'], // +44: UK first, then dependencies
                     '45': ['DK', 'FO', 'GL'], // +45: Denmark first, then Faroe Islands, Greenland
+                    '47': ['NO', 'SJ'],     // +47: Norway first, then Svalbard
+                    '61': ['AU', 'CC', 'CX'], // +61: Australia first, then Cocos Islands, Christmas Island
                     '212': ['MA', 'EH'],    // +212: Morocco first, then Western Sahara
+                    '262': ['RE', 'YT'],    // +262: Réunion first, then Mayotte
+                    '290': ['SH', 'TA'],    // +290: Saint Helena first, then Tristan da Cunha
+                    '358': ['FI', 'AX'],    // +358: Finland first, then Åland Islands
                     '590': ['GP', 'BL', 'MF'], // +590: Guadeloupe first
                     '596': ['MQ'],          // +596: Martinique
-                    '262': ['RE', 'YT'],    // +262: Réunion first, then Mayotte
                     '599': ['CW', 'BQ']     // +599: Curaçao first, then Caribbean Netherlands
                 };
                 
@@ -503,6 +535,30 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     fixed_line: '018 12345',
                     toll_free: '0800 123 456',
                     premium_rate: '0600 123 456'
+                },
+                'CC': {
+                    mobile: '0412 345 678',
+                    fixed_line: '08 9162 1234',
+                    toll_free: '1800 123 456',
+                    premium_rate: '1900 123 456'
+                },
+                'CX': {
+                    mobile: '0412 345 678',
+                    fixed_line: '08 9164 1234',
+                    toll_free: '1800 123 456',
+                    premium_rate: '1900 123 456'
+                },
+                'SH': {
+                    mobile: '1234',
+                    fixed_line: '1234',
+                    toll_free: '1234',
+                    premium_rate: '1234'
+                },
+                'TA': {
+                    mobile: '1234',
+                    fixed_line: '1234',
+                    toll_free: '1234',
+                    premium_rate: '1234'
                 }
             };
 
@@ -1718,55 +1774,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 'YT': injectCountryCode ? 18 : 13,  // "+262 639 12 34 56" vs "639 12 34 56"
                 'RE': injectCountryCode ? 18 : 13,  // "+262 692 12 34 56" vs "692 12 34 56"
                 'SH': injectCountryCode ? 14 : 9,   // "+290 1234" vs "1234"
+                'TA': injectCountryCode ? 14 : 9,   // "+290 1234" vs "1234" (Tristan da Cunha uses same format as Saint Helena)
+                'CC': injectCountryCode ? 17 : 12,  // "+61 0412 345 678" vs "0412 345 678" (Cocos Islands use same format as Australia)
+                'CX': injectCountryCode ? 17 : 12,  // "+61 0412 345 678" vs "0412 345 678" (Christmas Island uses same format as Australia)
                 'NG': injectCountryCode ? 17 : 12,  // "+234 802 123 4567" vs "802 123 4567"
-                'GH': injectCountryCode ? 16 : 11,  // "+233 24 123 4567" vs "24 123 4567"
-                'CI': injectCountryCode ? 16 : 11,  // "+225 07 12 34 56" vs "07 12 34 56"
-                'BF': injectCountryCode ? 15 : 10,  // "+226 70 12 34 56" vs "70 12 34 56"
-                'ML': injectCountryCode ? 15 : 10,  // "+223 65 12 34 56" vs "65 12 34 56"
-                'SN': injectCountryCode ? 16 : 11,  // "+221 77 123 45 67" vs "77 123 45 67"
-                'MR': injectCountryCode ? 15 : 10,  // "+222 22 12 34 56" vs "22 12 34 56"
-                'GM': injectCountryCode ? 15 : 10,  // "+220 301 2345" vs "301 2345"
-                'GW': injectCountryCode ? 15 : 10,  // "+245 955 1234" vs "955 1234"
-                'GN': injectCountryCode ? 16 : 11,  // "+224 601 12 34 56" vs "601 12 34 56"
-                'SL': injectCountryCode ? 15 : 10,  // "+232 25 123456" vs "25 123456"
-                'LR': injectCountryCode ? 15 : 10,  // "+231 77 012 345" vs "77 012 345"
-                'TG': injectCountryCode ? 15 : 10,  // "+228 90 11 23 45" vs "90 11 23 45"
-                'BJ': injectCountryCode ? 15 : 10,  // "+229 90 01 12 34" vs "90 01 12 34"
-                'NE': injectCountryCode ? 15 : 10,  // "+227 93 12 34 56" vs "93 12 34 56"
-                'TD': injectCountryCode ? 15 : 10,  // "+235 63 01 23 45" vs "63 01 23 45"
-                'CF': injectCountryCode ? 15 : 10,  // "+236 70 01 23 45" vs "70 01 23 45"
-                'CM': injectCountryCode ? 16 : 11,  // "+237 6 71 23 45 67" vs "6 71 23 45 67"
-                'GQ': injectCountryCode ? 16 : 11,  // "+240 222 123 456" vs "222 123 456"
-                'GA': injectCountryCode ? 15 : 10,  // "+241 06 03 12 34" vs "06 03 12 34"
-                'ST': injectCountryCode ? 15 : 10,  // "+239 991 2345" vs "991 2345"
-                'CG': injectCountryCode ? 16 : 11,  // "+242 06 612 3456" vs "06 612 3456"
-                'CD': injectCountryCode ? 16 : 11,  // "+243 99 123 4567" vs "99 123 4567"
-                'AO': injectCountryCode ? 16 : 11,  // "+244 923 123 456" vs "923 123 456"
-                'CV': injectCountryCode ? 15 : 10,  // "+238 991 12 34" vs "991 12 34"
-                
-                // Oceania
-                'AU': injectCountryCode ? 17 : 12,  // "+61 0412 345 678" vs "0412 345 678"
-                'NZ': injectCountryCode ? 15 : 10,  // "+64 21 123 4567" vs "21 123 4567"
-                'PG': injectCountryCode ? 16 : 11,  // "+675 7012 3456" vs "7012 3456"
-                'FJ': injectCountryCode ? 15 : 10,  // "+679 701 2345" vs "701 2345"
-                'NC': injectCountryCode ? 15 : 10,  // "+687 12 34 56" vs "12 34 56"
-                'PF': injectCountryCode ? 15 : 10,  // "+689 87 12 34 56" vs "87 12 34 56"
-                'WS': injectCountryCode ? 15 : 10,  // "+685 72 12345" vs "72 12345"
-                'TO': injectCountryCode ? 15 : 10,  // "+676 771 2345" vs "771 2345"
-                'VU': injectCountryCode ? 15 : 10,  // "+678 591 2345" vs "591 2345"
-                'SB': injectCountryCode ? 15 : 10,  // "+677 74 12345" vs "74 12345"
-                'TV': injectCountryCode ? 14 : 9,   // "+688 901234" vs "901234"
-                'NR': injectCountryCode ? 15 : 10,  // "+674 555 1234" vs "555 1234"
-                'KI': injectCountryCode ? 15 : 10,  // "+686 72012345" vs "72012345"
-                'MH': injectCountryCode ? 15 : 10,  // "+692 235 1234" vs "235 1234"
-                'FM': injectCountryCode ? 15 : 10,  // "+691 320 1234" vs "320 1234"
-                'PW': injectCountryCode ? 15 : 10,  // "+680 775 1234" vs "775 1234"
-                'CK': injectCountryCode ? 15 : 10,  // "+682 12345" vs "12345"
-                'NU': injectCountryCode ? 14 : 9,   // "+683 1234" vs "1234"
-                'TK': injectCountryCode ? 14 : 9,   // "+690 1234" vs "1234"
-                'WF': injectCountryCode ? 15 : 10,  // "+681 12 34 56" vs "12 34 56"
-                
-                // Caribbean
                 'JM': injectCountryCode ? 17 : 14,  // "+1 876 123-4567" vs "876 123-4567"
                 'CU': injectCountryCode ? 15 : 10,  // "+53 5 123 4567" vs "5 123 4567"
                 'HT': injectCountryCode ? 15 : 10,  // "+509 34 12 3456" vs "34 12 3456"
