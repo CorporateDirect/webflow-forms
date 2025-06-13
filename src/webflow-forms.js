@@ -2097,14 +2097,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.enhanceField(field);
         },
 
-        // Google Places Autocomplete (Custom Implementation)
+        // Google Places Autocomplete (New Implementation)
         setupGooglePlaces: function(field) {
             console.log('Setting up Google Places for field:', field.id || field.name);
             
             // Skip Google Places autocomplete for SELECT fields (they get populated but don't need autocomplete)
             if (field.tagName === 'SELECT') {
                 console.log('Skipping Google Places autocomplete for SELECT field - will be populated when address is selected');
-                // Skip manual edit tracking for non-input fields
                 console.log('Skipping manual edit tracking for Google Places field:', field.id || field.name);
                 return;
             }
@@ -2115,22 +2114,20 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
             
-            // Check if Google Places API is loaded with better detection
+            // Check if Google Places API is loaded (new API detection)
             if (typeof google === 'undefined' || 
                 !google.maps || 
                 !google.maps.places || 
-                !google.maps.places.AutocompleteService ||
-                !google.maps.places.PlacesService) {
-                console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&loading=async"></script>');
+                !google.maps.places.AutocompleteSuggestion) {
+                console.warn('Google Places API (New) not loaded. Please include: <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&loading=async"></script>');
                 
                 // Retry after a delay in case API is still loading
                 setTimeout(() => {
                     if (typeof google !== 'undefined' && 
                         google.maps && 
                         google.maps.places &&
-                        google.maps.places.AutocompleteService &&
-                        google.maps.places.PlacesService) {
-                        console.log('Google Places API loaded after delay, retrying setup...');
+                        google.maps.places.AutocompleteSuggestion) {
+                        console.log('Google Places API (New) loaded after delay, retrying setup...');
                         this.setupGooglePlaces(field);
                     }
                 }, 2000);
@@ -2141,9 +2138,6 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const countryRestrictions = field.dataset.placesCountries ? 
                 field.dataset.placesCountries.split(',') : undefined;
 
-            // Initialize Places Service
-            const service = new google.maps.places.PlacesService(document.createElement('div'));
-            
             // Create dropdown container
             const dropdown = document.createElement('div');
             dropdown.className = 'wf-places-dropdown';
@@ -2189,9 +2183,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Insert dropdown after field
             field.parentNode.insertBefore(dropdown, field.nextSibling);
 
-            let currentPredictions = [];
+            let currentSuggestions = [];
             let selectedIndex = -1;
             let isManualEdit = false;
+            let sessionToken = new google.maps.places.AutocompleteSessionToken();
 
             // Track manual edits
             field.addEventListener('input', (e) => {
@@ -2201,38 +2196,47 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
 
             // Handle input for predictions
-            field.addEventListener('input', (e) => {
+            field.addEventListener('input', async (e) => {
                 const query = e.target.value.trim();
                 
                 if (query.length < 2) {
                     hideDropdownCompletely();
-                    currentPredictions = [];
+                    currentSuggestions = [];
                     selectedIndex = -1;
                     return;
                 }
 
-                // Get predictions
-                const request = {
-                    input: query,
-                    types: field.dataset.placesTypes ? field.dataset.placesTypes.split(',') : ['address']
-                };
+                try {
+                    // Create request for new API
+                    const request = {
+                        input: query,
+                        sessionToken: sessionToken,
+                        includedPrimaryTypes: field.dataset.placesTypes ? 
+                            field.dataset.placesTypes.split(',') : ['address']
+                    };
 
-                if (countryRestrictions) {
-                    request.componentRestrictions = { country: countryRestrictions };
-                }
+                    if (countryRestrictions) {
+                        request.includedRegionCodes = countryRestrictions;
+                    }
 
-                const autocompleteService = new google.maps.places.AutocompleteService();
-                autocompleteService.getPlacePredictions(request, (predictions, status) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                        currentPredictions = predictions;
-                        this.renderPredictions(dropdown, predictions, field, service);
+                    // Use new AutocompleteSuggestion API
+                    const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+                    
+                    if (suggestions && suggestions.length > 0) {
+                        currentSuggestions = suggestions;
+                        this.renderSuggestions(dropdown, suggestions, field);
                         selectedIndex = -1;
                     } else {
                         hideDropdownCompletely();
-                        currentPredictions = [];
+                        currentSuggestions = [];
                         selectedIndex = -1;
                     }
-                });
+                } catch (error) {
+                    console.warn('Error fetching autocomplete suggestions:', error);
+                    hideDropdownCompletely();
+                    currentSuggestions = [];
+                    selectedIndex = -1;
+                }
             });
 
             // Handle keyboard navigation
@@ -2242,7 +2246,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 switch (e.key) {
                     case 'ArrowDown':
                         e.preventDefault();
-                        selectedIndex = Math.min(selectedIndex + 1, currentPredictions.length - 1);
+                        selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
                         this.updateSelection(dropdown, selectedIndex);
                         break;
                     case 'ArrowUp':
@@ -2252,8 +2256,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         break;
                     case 'Enter':
                         e.preventDefault();
-                        if (selectedIndex >= 0 && currentPredictions[selectedIndex]) {
-                            this.selectPrediction(currentPredictions[selectedIndex], field, service, dropdown);
+                        if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+                            this.selectSuggestion(currentSuggestions[selectedIndex], field, dropdown, sessionToken);
                         }
                         break;
                     case 'Escape':
@@ -2283,19 +2287,23 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
             // Store references for cleanup
             field._placesDropdown = dropdown;
-            field._placesService = service;
+            field._sessionToken = sessionToken;
 
             this.triggerCustomEvent(field, 'googlePlacesSetup', {
-                customImplementation: true,
+                newImplementation: true,
                 countryRestrictions: countryRestrictions
             });
         },
 
-        // Render predictions in dropdown
-        renderPredictions: function(dropdown, predictions, field, service) {
+        // Render suggestions in dropdown (updated for new API)
+        renderSuggestions: function(dropdown, suggestions, field) {
             dropdown.innerHTML = '';
             
-            predictions.forEach((prediction, index) => {
+            suggestions.forEach((suggestion, index) => {
+                // Handle both place predictions and query predictions
+                const prediction = suggestion.placePrediction || suggestion.queryPrediction;
+                if (!prediction) return;
+
                 const item = document.createElement('div');
                 item.className = 'wf-places-item';
                 item.style.cssText = `
@@ -2309,15 +2317,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Main text (usually the address)
                 const mainText = document.createElement('div');
                 mainText.style.fontWeight = '500';
-                mainText.textContent = prediction.structured_formatting.main_text;
+                mainText.textContent = prediction.structuredFormat?.mainText?.text || 
+                                        prediction.text?.text || 
+                                        prediction.text || '';
                 
                 // Secondary text (usually city, state, country)
                 const secondaryText = document.createElement('div');
                 secondaryText.style.cssText = 'color: #666; font-size: 12px; margin-top: 2px;';
-                secondaryText.textContent = prediction.structured_formatting.secondary_text;
+                secondaryText.textContent = prediction.structuredFormat?.secondaryText?.text || '';
                 
                 item.appendChild(mainText);
-                item.appendChild(secondaryText);
+                if (secondaryText.textContent) {
+                    item.appendChild(secondaryText);
+                }
                 
                 // Hover effects
                 item.addEventListener('mouseenter', () => {
@@ -2330,7 +2342,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 
                 // Click handler
                 item.addEventListener('click', () => {
-                    this.selectPrediction(prediction, field, service, dropdown);
+                    this.selectSuggestion(suggestion, field, dropdown, field._sessionToken);
                 });
                 
                 dropdown.appendChild(item);
@@ -2352,26 +2364,34 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
         },
 
-        // Handle prediction selection
-        selectPrediction: function(prediction, field, service, dropdown) {
-            // Set field value
-            field.value = prediction.description;
-            
-            // Hide and clear dropdown completely
-            dropdown.style.display = 'none';
-            dropdown.style.visibility = 'hidden';
-            dropdown.innerHTML = '';
-            
-            // Mark as auto-populated
-            field.dataset.autoPopulated = 'true';
-            field.classList.add('wf-auto-populated');
-            
-            // Get place details for address components
-            service.getDetails({
-                placeId: prediction.place_id,
-                fields: ['address_components', 'formatted_address', 'geometry', 'name']
-            }, (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+        // Handle suggestion selection (updated for new API)
+        selectSuggestion: async function(suggestion, field, dropdown, sessionToken) {
+            try {
+                // Handle both place predictions and query predictions
+                const prediction = suggestion.placePrediction || suggestion.queryPrediction;
+                if (!prediction) return;
+
+                // Set field value
+                field.value = prediction.text?.text || prediction.text || '';
+                
+                // Hide and clear dropdown completely
+                dropdown.style.display = 'none';
+                dropdown.style.visibility = 'hidden';
+                dropdown.innerHTML = '';
+                
+                // Mark as auto-populated
+                field.dataset.autoPopulated = 'true';
+                field.classList.add('wf-auto-populated');
+                
+                // Only proceed with place details if it's a place prediction (not query prediction)
+                if (suggestion.placePrediction) {
+                    // Convert to Place object and fetch details
+                    const place = suggestion.placePrediction.toPlace();
+                    
+                    await place.fetchFields({
+                        fields: ['addressComponents', 'formattedAddress', 'location', 'displayName']
+                    });
+
                     // Populate related fields if enabled
                     if (field.dataset.populateFields === 'true') {
                         this.populateAddressFields(place, field);
@@ -2380,19 +2400,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     // Trigger custom event
                     this.triggerCustomEvent(field, 'placeSelected', {
                         place: place,
-                        formattedAddress: place.formatted_address,
-                        addressComponents: place.address_components,
-                        prediction: prediction
+                        formattedAddress: place.formattedAddress,
+                        addressComponents: place.addressComponents,
+                        suggestion: suggestion
                     });
-                } else {
-                    console.warn('Failed to get place details:', status);
+
+                    // Create new session token for next search
+                    field._sessionToken = new google.maps.places.AutocompleteSessionToken();
                 }
-            });
+            } catch (error) {
+                console.warn('Failed to get place details:', error);
+            }
         },
 
-        // Populate address fields based on Google Places selection
+        // Populate address fields based on Google Places selection (updated for new API)
         populateAddressFields: function(place, sourceField) {
-            console.log('Populating address fields from place:', place.formatted_address);
+            console.log('Populating address fields from place:', place.formattedAddress);
             
             const form = sourceField.closest('form');
             if (!form) {
@@ -2400,17 +2423,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
 
-            // Create address component map
+            // Create address component map (updated for new API camelCase format)
             const addressMap = {};
-            place.address_components.forEach(component => {
-                const types = component.types;
-                types.forEach(type => {
-                    addressMap[type] = {
-                        long_name: component.long_name,
-                        short_name: component.short_name
-                    };
+            if (place.addressComponents) {
+                place.addressComponents.forEach(component => {
+                    const types = component.types;
+                    types.forEach(type => {
+                        addressMap[type] = {
+                            longText: component.longText,
+                            shortText: component.shortText
+                        };
+                    });
                 });
-            });
+            }
             
             console.log('Address component map:', addressMap);
 
@@ -2427,13 +2452,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 for (const componentType of componentTypes) {
                     const trimmedType = componentType.trim();
                     if (addressMap[trimmedType]) {
-                        // Use short_name for states/countries, long_name for others
-                        if (trimmedType === 'administrative_area_level_1' || trimmedType === 'country') {
+                        // Use shortText for states/countries, longText for others
+                        if (trimmedType === 'administrativeAreaLevel1' || trimmedType === 'country') {
                             value = targetField.dataset.useFullName === 'true' ? 
-                                addressMap[trimmedType].long_name : 
-                                addressMap[trimmedType].short_name;
+                                addressMap[trimmedType].longText : 
+                                addressMap[trimmedType].shortText;
                         } else {
-                            value = addressMap[trimmedType].long_name;
+                            value = addressMap[trimmedType].longText;
                         }
                         console.log(`  Found match for ${trimmedType}: ${value}`);
                         break;
@@ -2441,9 +2466,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
 
                 // Special handling for combined fields (e.g., street number + route)
-                if (componentTypes.includes('street_number') && componentTypes.includes('route')) {
-                    const streetNumber = addressMap['street_number']?.long_name || '';
-                    const route = addressMap['route']?.long_name || '';
+                if (componentTypes.includes('streetNumber') && componentTypes.includes('route')) {
+                    const streetNumber = addressMap['streetNumber']?.longText || '';
+                    const route = addressMap['route']?.longText || '';
                     value = `${streetNumber} ${route}`.trim();
                 }
 
@@ -2498,7 +2523,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
         },
 
-        // Populate select fields (like country/state dropdowns)
+        // Populate select fields (like country/state dropdowns) - updated for new API
         populateSelectField: function(selectField, value, addressMap) {
             console.log(`Populating select field: ${selectField.name || selectField.id} with value: ${value}`);
             
@@ -2506,8 +2531,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             if (selectField.dataset.countryCode === 'true' || 
                 selectField.dataset.addressComponent?.includes('country')) {
                 
-                const countryCode = addressMap['country']?.short_name;
-                const countryName = addressMap['country']?.long_name;
+                const countryCode = addressMap['country']?.shortText;
+                const countryName = addressMap['country']?.longText;
                 
                 console.log(`  Country data: ${countryCode} / ${countryName}`);
                 console.log(`  Use full name: ${selectField.dataset.useFullName}`);
