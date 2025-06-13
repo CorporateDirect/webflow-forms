@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Specific Form - Google Places Integration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        /* Auto-populated field styling */
+        .wf-auto-populated {
+            background-color: #f8f9ff;
+            border-color: #007bff;
+        }
+                 /* User-edited field styling */
+         .wf-user-edited {
+             border-color: #28a745;
+             background-color: #f8fff9;
+         }
+        .info-banner {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .info-banner h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        .submit-btn {
+            width: 100%;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .submit-btn:hover {
+            background: #0056b3;
+        }
+        small {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Contact Information Form</h1>
+        
+                 <div class="info-banner">
+             <h3>🎯 Smart Address Entry</h3>
+             <p>Start typing your address below and watch the city, state, country, and postal code fill automatically. You can always click any field and type directly to override!</p>
+         </div>
+
+        <form data-name="contact-form" method="POST">
+            <!-- Name fields (not affected by Google Places) -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first-name">First Name *</label>
+                    <input type="text" 
+                           id="first-name" 
+                           name="first-name" 
+                           required
+                           placeholder="Enter your first name">
+                </div>
+                <div class="form-group">
+                    <label for="last-name">Last Name *</label>
+                    <input type="text" 
+                           id="last-name" 
+                           name="last-name" 
+                           required
+                           placeholder="Enter your last name">
+                </div>
+            </div>
+
+            <!-- Address search field (Google Places enabled) -->
+            <div class="form-group">
+                <label for="address">Address *</label>
+                <input type="text" 
+                       id="address" 
+                       name="address" 
+                       data-google-places="true" 
+                       data-populate-fields="true"
+                       data-places-types="address"
+                       required
+                       placeholder="Start typing your address...">
+                <small>🔍 Start typing to see address suggestions</small>
+            </div>
+
+            <!-- Auto-populated fields with failsafes -->
+            <div class="form-group">
+                <label for="city">City *</label>
+                <input type="text" 
+                       id="city" 
+                       name="city" 
+                       data-address-component="locality"
+                       required
+                       placeholder="Will auto-fill from address (or enter manually)">
+                <small>✨ Auto-populated from address search, but you can edit it</small>
+            </div>
+
+                         <div class="form-row">
+                 <div class="form-group">
+                     <label for="country">Country *</label>
+                     <input type="text" 
+                            id="country" 
+                            name="country" 
+                            data-address-component="country"
+                            required
+                            placeholder="Will auto-fill from address">
+                     <small>🌍 Auto-populated from address, but you can type directly</small>
+                 </div>
+                 <div class="form-group">
+                     <label for="postal-code">Postal Code *</label>
+                     <input type="text" 
+                            id="postal-code" 
+                            name="postal-code" 
+                            data-address-component="postal_code"
+                            required
+                            placeholder="Will auto-fill from address">
+                     <small>📮 Auto-populated, but you can type directly</small>
+                 </div>
+             </div>
+
+             <!-- State/Province as simple text input -->
+             <div class="form-group">
+                 <label for="state">State/Province/Region *</label>
+                 <input type="text" 
+                        id="state" 
+                        name="state" 
+                        data-address-component="administrative_area_level_1"
+                        required
+                        placeholder="Will auto-fill from address">
+                 <small>🏛️ Auto-populated from address, but you can type directly</small>
+             </div>
+
+            <button type="submit" class="submit-btn">
+                Submit Form
+            </button>
+        </form>
+    </div>
+
+    <!-- Google Maps API -->
+    <script async defer 
+            src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+    </script>
+
+    <!-- Your webflow-forms library -->
+    <script src="dist/webflow-forms.min.js"></script>
+    
+    <script>
+        // Enhanced form behavior and debugging
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Form loaded, setting up enhanced features...');
+            
+                         // Track user manual edits to prevent auto-overwrite
+             const trackManualEdits = (field) => {
+                 field.addEventListener('input', function() {
+                     if (!field.dataset.autoPopulated) {
+                         // User manually typed - mark as user-edited
+                         field.dataset.autoPopulate = 'false';
+                         field.classList.add('wf-user-edited');
+                         console.log(`User manually edited field: ${field.name}`);
+                     }
+                 });
+                 
+                 field.addEventListener('focus', function() {
+                     // Remove auto-populated styling when user focuses to edit
+                     field.classList.remove('wf-auto-populated');
+                 });
+             };
+            
+            // Apply to all auto-populated fields
+            const autoFields = document.querySelectorAll('[data-address-component]');
+            autoFields.forEach(trackManualEdits);
+            
+            // Listen for Google Places events
+            document.addEventListener('webflowField:placeSelected', (e) => {
+                console.log('✅ Place selected:', e.detail.formattedAddress);
+                
+                // Show user that fields are being populated
+                const notification = document.createElement('div');
+                notification.textContent = '✨ Address fields updated!';
+                notification.style.cssText = `
+                    position: fixed; 
+                    top: 20px; 
+                    right: 20px; 
+                    background: #28a745; 
+                    color: white; 
+                    padding: 10px 20px; 
+                    border-radius: 6px; 
+                    z-index: 1000;
+                    font-size: 14px;
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            });
+            
+            document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
+                console.log('📝 Fields populated:', e.detail.populatedFields);
+                
+                // Highlight populated fields briefly
+                setTimeout(() => {
+                    const populatedFields = document.querySelectorAll('.wf-auto-populated');
+                    populatedFields.forEach(field => {
+                        field.style.transition = 'all 0.3s ease';
+                        field.style.transform = 'scale(1.02)';
+                        setTimeout(() => {
+                            field.style.transform = 'scale(1)';
+                        }, 300);
+                    });
+                }, 100);
+            });
+            
+            // Form submission handling
+            document.querySelector('form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Collect all form data
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData);
+                
+                console.log('Form data:', data);
+                
+                // Show success message
+                alert('Form data logged to console! Check developer tools.');
+            });
+        });
+        
+        // Error handling for Google Places API
+        window.addEventListener('error', function(e) {
+            if (e.message.includes('Google') || e.message.includes('places')) {
+                console.warn('Google Places API issue detected. Forms will work without autocomplete.');
+                
+                // Show fallback message
+                const banner = document.querySelector('.info-banner');
+                if (banner) {
+                    banner.style.background = '#fff3cd';
+                    banner.style.borderColor = '#ffc107';
+                    banner.innerHTML = `
+                        <h3>⚠️ Address Autocomplete Unavailable</h3>
+                        <p>Please fill in all address fields manually. All fields are fully functional.</p>
+                    `;
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

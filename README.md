@@ -1,179 +1,317 @@
 # Webflow Field Enhancer
 
-**Advanced field behaviors for Webflow forms that go beyond Webflow's default functionality.**
+**🚀 Advanced form field behaviors for Webflow that go beyond native functionality**
 
-Enhances form fields with functionality that Webflow doesn't provide natively, while working seamlessly alongside Webflow's core form features and Formly for submission handling.
+Enhance your Webflow forms with intelligent features like Google Places autocomplete, dynamic phone formatting, country dropdowns, input validation, conditional fields, and more. Works seamlessly alongside Webflow's core functionality and any form submission service.
 
-## What This Library Does vs. What Webflow/Formly Handle
+[![npm version](https://badge.fury.io/js/webflow-forms.svg)](https://www.npmjs.com/package/webflow-forms)
+[![jsDelivr hits](https://data.jsdelivr.com/v1/package/gh/chrisbrummer/webflow-forms/badge)](https://www.jsdelivr.com/package/gh/chrisbrummer/webflow-forms)
 
-### ✅ **This Library Handles (Beyond Webflow Defaults):**
-- 🎨 **Input Formatting** - Phone numbers, currency, credit cards
-- 📊 **Character Counters** - Live character count with warnings
-- 📏 **Auto-Resize Textareas** - Dynamic height based on content
-- 🔗 **Conditional Fields** - Show/hide fields based on other field values
-- 🎯 **Custom Validation** - Advanced regex patterns beyond basic validation
-- 🔄 **Field Syncing** - Copy/transform values between fields
-- ⚡ **Enhanced Interactions** - Typing indicators, custom focus states
-- 🎭 **Input Masking** - Format input as user types
+## ✨ Key Features
 
-### 🌐 **Webflow Handles (Native Functionality):**
-- Required field validation
-- Basic email/URL validation
-- Form styling and states
-- Basic focus/blur interactions
-- Field labels and structure
+- 🌍 **Google Places Autocomplete** - Global address search with auto-population
+- 📱 **Smart Phone Formatting** - Country-aware phone number formatting with auto-injection
+- 🏳️ **Country Dropdowns** - Searchable dropdowns with 245+ countries
+- ✅ **Advanced Validation** - Custom regex patterns with real-time feedback
+- 🔗 **Conditional Fields** - Show/hide fields based on user input
+- 📊 **Character Counters** - Live character count with visual indicators
+- 📏 **Auto-Resize Textareas** - Dynamic height adjustment
+- 🎨 **Input Formatting** - Currency, credit cards, and custom patterns
+- 🔄 **Field Syncing** - Copy and transform values between fields
+- ⚡ **Zero Configuration** - Just add data attributes to your Webflow form fields
 
-### 🚀 **Formly Handles:**
-- Form submission
-- Data processing
-- Success/error states
-- Integrations (email, CRM, etc.)
+## 📦 Installation
 
-## Installation
-
-### Via JSDelivr CDN
+### CDN (Recommended)
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@27cc5c4/dist/webflow-forms.min.js"></script>
+<!-- Latest stable version -->
+<script src="https://cdn.jsdelivr.net/gh/chrisbrummer/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
-**Note:** If the above URL doesn't work immediately, jsDelivr may need time to sync. You can also use:
-```html
-<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
-```
-
-### Via NPM
+### NPM
 
 ```bash
 npm install webflow-forms
 ```
 
-## Usage
-
-The library only enhances fields that have specific data attributes. Fields without enhancement attributes are left to Webflow's native functionality.
-
-```html
-<!-- This field uses only Webflow's native functionality -->
-<input type="email" name="email" required>
-
-<!-- This field gets enhanced with formatting -->
-<input type="tel" name="phone" data-format="phone-us">
-
-<!-- This field gets enhanced with character counter -->
-<textarea name="message" data-character-counter="true" maxlength="500"></textarea>
+```javascript
+import WebflowFieldEnhancer from 'webflow-forms';
+// Auto-initializes on load
 ```
 
-## Complete Data Attributes Reference
+## 🚀 Quick Start
 
-### All Available Data Attributes
+The library automatically enhances form fields that include specific data attributes. No JavaScript configuration needed!
+
+```html
+<!-- Regular Webflow field (unchanged) -->
+<input type="email" name="email" required>
+
+<!-- Enhanced with phone formatting -->
+<input type="tel" name="phone" data-format="phone-us">
+
+<!-- Enhanced with character counter -->
+<textarea name="message" data-character-counter="true" maxlength="500"></textarea>
+
+<!-- Enhanced with Google Places autocomplete -->
+<input type="text" name="address" data-google-places="true" data-populate-fields="true">
+```
+
+## 📋 Complete Data Attributes Reference
+
+### 🔍 Quick Reference by Category
+
+| Category | Primary Attributes | Usage |
+|----------|-------------------|-------|
+| **🌍 Google Places** | `data-google-places`, `data-populate-fields` | Address autocomplete & field population |
+| **🏳️ Country Dropdowns** | `data-country-code`, `data-country-searchable` | International country selection |
+| **📱 Phone Formatting** | `data-phone-format`, `data-format="phone-us"` | Smart phone number formatting |
+| **📊 Character Counters** | `data-character-counter`, `data-counter-format` | Live character counting |
+| **🔗 Conditional Fields** | `data-shows-field`, `data-trigger-value` | Show/hide fields dynamically |
+| **✅ Custom Validation** | `data-custom-validation`, `data-validate-on-input` | Advanced form validation |
+| **🔄 Field Syncing** | `data-field-sync`, `data-sync-type` | Copy values between fields |
+| **📏 Auto-Resize** | `data-auto-resize`, `data-min-height` | Dynamic textarea sizing |
+
+### Core Enhancement Attributes
+
+| Attribute | Element | Values | Description |
+|-----------|---------|--------|-------------|
+| `data-webflow-fields-disable` | Form/Field | `"true"` | Disables all enhancements |
+
+### 🎨 Input Formatting
 
 | Attribute | Element | Values | Description | Example |
 |-----------|---------|--------|-------------|---------|
-| `data-webflow-fields-disable` | Form or Field | `"true"` | Disables all enhancements for form/field | `<form data-webflow-fields-disable="true">` |
-| `data-format` | Input | `"phone-us"`, `"currency"`, `"credit-card"` | Formats input as user types | `<input data-format="phone-us">` |
-| `data-character-counter` | Textarea | `"true"` | Shows live character count | `<textarea data-character-counter="true">` |
-| `data-counter-format` | Textarea | Custom string | Custom counter display format | `data-counter-format="{current}/{max} chars"` |
-| `data-counter-position` | Textarea | `"before"`, `"after"` | Position of character counter | `data-counter-position="before"` |
+| `data-format` | Input | `"phone-us"`, `"currency"`, `"credit-card"` | Format input as user types | `<input data-format="phone-us">` |
+| `data-input-mask` | Input | Mask pattern | Apply custom input masking | `data-input-mask="(000) 000-0000"` |
+
+### 📊 Character Counters
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-character-counter` | Textarea | `"true"` | Show live character count | `<textarea data-character-counter="true">` |
+| `data-counter-format` | Textarea | String template | Custom counter display | `data-counter-format="{current}/{max} chars"` |
+| `data-counter-position` | Textarea | `"before"`, `"after"` | Counter position | `data-counter-position="before"` |
+| `data-max-length` | Textarea | Number | Alternative to maxlength attribute | `data-max-length="500"` |
+
+### 📏 Auto-Resize Textareas
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
 | `data-auto-resize` | Textarea | `"true"` | Auto-resize height based on content | `<textarea data-auto-resize="true">` |
-| `data-min-height` | Textarea | Number (px) | Minimum height for auto-resize | `data-min-height="100"` |
-| `data-max-height` | Textarea | Number (px) | Maximum height for auto-resize | `data-max-height="300"` |
-| `data-shows-field` | Any Field | CSS selector | Shows target field when condition met | `data-shows-field="#hidden-section"` |
-| `data-hides-field` | Any Field | CSS selector | Hides target field when condition met | `data-hides-field="#optional-field"` |
-| `data-trigger-value` | Any Field | String | Specific value that triggers show/hide | `data-trigger-value="yes"` |
-| `data-trigger-values` | Any Field | Comma-separated | Multiple values that trigger show/hide | `data-trigger-values="option1,option2"` |
-| `data-custom-validation` | Input/Textarea | Regex pattern | Custom validation beyond Webflow defaults | `data-custom-validation="^[A-Z][a-z]+$"` |
-| `data-validation-message` | Input/Textarea | String | Custom validation error message | `data-validation-message="Invalid format"` |
-| `data-validate-on-input` | Input/Textarea | `"true"` | Validate in real-time as user types | `data-validate-on-input="true"` |
-| `data-field-sync` | Input/Textarea | CSS selector | Sync value to another field | `data-field-sync="#target-field"` |
-| `data-sync-type` | Input/Textarea | `"copy"`, `"uppercase"`, `"lowercase"` | How to transform synced value | `data-sync-type="uppercase"` |
-| `data-input-mask` | Input | Mask pattern | Apply input masking (extensible) | `data-input-mask="(000) 000-0000"` |
+| `data-min-height` | Textarea | Number (px) | Minimum height constraint | `data-min-height="100"` |
+| `data-max-height` | Textarea | Number (px) | Maximum height constraint | `data-max-height="300"` |
+
+### 🔗 Conditional Fields
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-shows-field` | Any Field | CSS selector | Show target field when condition met | `data-shows-field="#details"` |
+| `data-hides-field` | Any Field | CSS selector | Hide target field when condition met | `data-hides-field="#optional"` |
+| `data-trigger-value` | Any Field | String | Specific value that triggers action | `data-trigger-value="yes"` |
+| `data-trigger-values` | Any Field | Comma-separated | Multiple trigger values | `data-trigger-values="option1,option2"` |
+
+### ✅ Advanced Validation
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-custom-validation` | Input/Textarea | Regex pattern | Custom validation rule | `data-custom-validation="^[A-Z][a-z]+$"` |
+| `data-validation-message` | Input/Textarea | String | Custom error message | `data-validation-message="Invalid format"` |
+| `data-validate-on-input` | Input/Textarea | `"true"` | Real-time validation | `data-validate-on-input="true"` |
+
+### 🔄 Field Syncing
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-field-sync` | Input/Textarea | CSS selector | Target field to sync with | `data-field-sync="#target"` |
+| `data-sync-type` | Input/Textarea | `"copy"`, `"uppercase"`, `"lowercase"` | How to transform value | `data-sync-type="uppercase"` |
+
+### 🌍 Country Dropdowns
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-country-code` | Select | `"true"` | Populate with 245+ countries | `<select data-country-code="true">` |
+| `data-country-format` | Select | `"name-code"`, `"name"`, `"code"`, `"flag-name"`, `"flag-code"` | Display format | `data-country-format="name"` |
+| `data-country-value` | Select | `"code"`, `"name"`, `"full"` | Value to store when selected | `data-country-value="name"` |
+| `data-country-sort-by` | Select | `"name"`, `"code"` | Sort order | `data-country-sort-by="name"` |
+| `data-country-searchable` | Select | `"true"`, `"false"` | Enable search functionality | `data-country-searchable="false"` |
+
+### 📱 Dynamic Phone Formatting
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-phone-format` | Input | `""` (empty) | Enable country-aware phone formatting | `<input data-phone-format="">` |
+| `data-phone-country-field` | Input | CSS selector | Specify country field to watch | `data-phone-country-field="#country"` |
+| `data-phone-update-placeholder` | Input | `"true"`, `"false"` | Update placeholder with format | `data-phone-update-placeholder="false"` |
+| `data-phone-type` | Input | `"mobile"`, `"fixed_line"`, `"toll_free"` | Phone number type | `data-phone-type="mobile"` |
+
+### 🎯 Google Places Autocomplete
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-google-places` | Input | `"true"` | Enable Google Places autocomplete | `<input data-google-places="true">` |
+| `data-populate-fields` | Input | `"true"` | Auto-populate other form fields | `data-populate-fields="true"` |
+| `data-places-types` | Input | Comma-separated | Restrict place types | `data-places-types="address,establishment"` |
+| `data-places-countries` | Input | Comma-separated codes | Restrict to countries | `data-places-countries="US,CA,GB"` |
+
+### 📍 Address Component Mapping
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
+| `data-address-component` | Input/Select | Component type(s) | Map to address component | `data-address-component="locality"` |
+| `data-use-full-name` | Input/Select | `"true"`, `"false"` | Use full names vs abbreviations | `data-use-full-name="true"` |
+| `data-state-name` | Select | `"true"` | Mark as state/province field | `<select data-state-name="true">` |
+| `data-postal-code` | Input | `"true"` | Mark as postal code field | `<input data-postal-code="true">` |
+| `data-auto-populate` | Input/Select | `"false"` | Prevent auto-population (internal) | Used internally by library |
+| `data-auto-populated` | Input/Select | `"true"` | Mark field as auto-populated (internal) | Added automatically by library |
+
+### 🔧 Advanced Options
+
+| Attribute | Element | Values | Description | Example |
+|-----------|---------|--------|-------------|---------|
 | `data-auto-complete` | Input | Custom type | Enhanced autocomplete behavior | `data-auto-complete="company-names"` |
-| `data-country-code` | Select | `"true"` | Populates select with country options | `<select data-country-code="true">` |
-| `data-country-format` | Select | `"name-code"`, `"name"`, `"code"` | How to display countries in options | `data-country-format="name"` |
-| `data-country-value` | Select | `"code"`, `"name"`, `"full"` | What value to store when selected | `data-country-value="name"` |
-| `data-country-sort-by` | Select | `"name"`, `"code"` | How to sort country list | `data-country-sort-by="name"` |
-| `data-country-searchable` | Select | `"true"`, `"false"` | Enable/disable search functionality (default: true) | `data-country-searchable="false"` |
-| `data-phone-format` | Input | `""` (empty) | Enable dynamic phone formatting with country code injection based on country selection | `data-phone-format=""` |
-| `data-phone-country-field` | Input | CSS selector | Specify which country field to listen to (optional) | `data-phone-country-field="#country-select"` |
-| `data-phone-update-placeholder` | Input | `"true"`, `"false"` | Update placeholder with country format (default: true) | `data-phone-update-placeholder="false"` |
-| `data-phone-type` | Input | `"mobile"`, `"fixed_line"`, `"toll_free"`, `"premium_rate"` | Phone number type for formatting (default: mobile) | `data-phone-type="fixed_line"` |
-| `data-google-places` | Input | `"true"` | Enable Google Places Autocomplete | `<input data-google-places="true">` |
-| `data-populate-fields` | Input | `"true"` | Auto-populate other form fields from selected address | `data-populate-fields="true"` |
-| `data-address-component` | Input/Select | Google component type(s) | Map field to specific address component | `data-address-component="locality"` |
-| `data-places-types` | Input | Comma-separated types | Restrict autocomplete to specific place types | `data-places-types="address,establishment"` |
-| `data-places-countries` | Input | Comma-separated country codes | Restrict autocomplete to specific countries | `data-places-countries="US,CA,GB"` |
-| `data-use-full-name` | Input/Select | `"true"`, `"false"` | Use full names instead of abbreviations (default: false) | `data-use-full-name="true"` |
-| `data-postal-code` | Input | `"true"` | Enable postal code detection (fallback method) | `<input data-postal-code="true">` |
-| `data-state-name` | Select | `"true"` | Mark field as state/province field for population | `<select data-state-name="true">` |
 
-### Common Combinations
+## 🌍 Google Places Integration
 
-| Use Case | Combination | Example |
-|----------|-------------|---------|
-| **Dynamic Phone Formatting with Country Code Injection** | `data-country-code` + `data-phone-format` | `<select data-country-code="true">` + `<input data-phone-format="">` |
-| **Static Phone Formatting** | `data-format="phone-us"` | `<input type="tel" name="phone" data-format="phone-us">` |
-| **Smart Textarea** | `data-auto-resize` + `data-character-counter` | `<textarea data-auto-resize="true" data-character-counter="true" maxlength="500">` |
-| **Conditional Field** | `data-shows-field` + `data-trigger-value` | `<select data-shows-field="#details" data-trigger-value="yes">` |
-| **Real-time Validation** | `data-custom-validation` + `data-validate-on-input` | `<input data-custom-validation="^\d{4}$" data-validate-on-input="true">` |
-| **Field Syncing** | `data-field-sync` + `data-sync-type` | `<input data-field-sync="#display" data-sync-type="uppercase">` |
-| **Advanced Counter** | `data-character-counter` + `data-counter-format` | `<textarea data-character-counter="true" data-counter-format="Words: {current}/{max}">` |
-| **Searchable Country Select** | `data-country-code` + `data-country-format` | `<select data-country-code="true" data-country-format="flag-name">` |
+**The most powerful address input solution** - leverage Google's global address database for accurate, fast address entry.
 
-## Data Attributes for Enhanced Behaviors
+### Prerequisites
 
-### Input Formatting (Beyond Webflow)
+1. **Google Maps API Key** from [Google Cloud Console](https://console.cloud.google.com/)
+2. **Enable Places API** in your project
+3. **Include Google Maps JavaScript API**:
 
 ```html
-<!-- US Phone number formatting: (555) 123-4567 -->
-<input type="tel" data-format="phone-us">
-
-<!-- Currency formatting: $123.45 -->
-<input type="text" data-format="currency">
-
-<!-- Credit card formatting: 1234 5678 9012 3456 -->
-<input type="text" data-format="credit-card">
+<!-- Add BEFORE webflow-forms script -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+<script src="https://cdn.jsdelivr.net/gh/chrisbrummer/webflow-forms@latest/dist/webflow-forms.min.js"></script>
 ```
 
-### Character Counters
+### Basic Implementation
 
 ```html
-<!-- Basic character counter -->
-<textarea data-character-counter="true" maxlength="500"></textarea>
+<!-- Address search field -->
+<input type="text" name="address" 
+       data-google-places="true" 
+       data-populate-fields="true"
+       placeholder="Start typing your address...">
 
-<!-- Custom counter format -->
-<textarea data-character-counter="true" 
-          data-counter-format="{current}/{max} characters"
-          maxlength="500"></textarea>
-
-<!-- Counter positioning -->
-<textarea data-character-counter="true" 
-          data-counter-position="before"
-          maxlength="500"></textarea>
+<!-- Auto-populated fields (all editable as text inputs) -->
+<input type="text" name="city" data-address-component="locality">
+<input type="text" name="state" data-address-component="administrative_area_level_1">
+<input type="text" name="country" data-address-component="country">
+<input type="text" name="postal-code" data-address-component="postal_code">
 ```
 
-### Auto-Resize Textareas
+### 🛡️ Built-in Failsafes
+
+**All address fields are always directly editable:**
+- ✅ **Click & Type**: Users can click any field and type directly to override
+- ✅ **Manual Override Protection**: Won't overwrite user input once manually edited
+- ✅ **API Failure Recovery**: Works 100% normally even if Google Places fails
+- ✅ **Visual Feedback**: Auto-populated fields get blue styling, manually edited get green
+- ✅ **No Dropdowns**: All fields are simple text inputs for maximum flexibility
+
+### Address Component Types
+
+| Component | Description | Example Output |
+|-----------|-------------|----------------|
+| `street_number,route` | Full street address | "123 Main Street" |
+| `locality` | City | "Los Angeles" |
+| `administrative_area_level_1` | State/Province | "CA" or "California" |
+| `country` | Country | "US" or "United States" |
+| `postal_code` | Postal/ZIP code | "90210" |
+| `subpremise` | Apartment/Suite | "Apt 4B" |
+
+### Advanced Configuration
 
 ```html
-<!-- Basic auto-resize -->
-<textarea data-auto-resize="true"></textarea>
+<!-- Restrict to specific countries and types -->
+<input type="text" name="address" 
+       data-google-places="true" 
+       data-populate-fields="true"
+       data-places-countries="US,CA,GB"
+       data-places-types="address"
+       placeholder="US, Canada, or UK addresses only">
 
-<!-- With min/max height constraints -->
-<textarea data-auto-resize="true" 
-          data-min-height="100" 
-          data-max-height="300"></textarea>
+<!-- Use full names instead of abbreviations -->
+<input type="text" name="state" 
+       data-address-component="administrative_area_level_1"
+       data-use-full-name="true">
+<!-- Shows "California" instead of "CA" -->
 ```
 
-### Conditional Fields
+## 🏳️ Country Dropdowns
+
+Auto-populate select fields with **245+ countries** powered by libphonenumber data.
 
 ```html
-<!-- Show field when specific value is selected -->
+<!-- Searchable country dropdown (default) -->
+<select name="country" data-country-code="true">
+  <option value="">Select Country</option>
+</select>
+<!-- Creates: United States (+1), United Kingdom (+44), etc. -->
+
+<!-- Different display formats -->
+<select data-country-code="true" data-country-format="name">
+  <!-- Shows: United States -->
+</select>
+
+<select data-country-code="true" data-country-format="code">
+  <!-- Shows: +1 -->
+</select>
+
+<!-- Disable search functionality -->
+<select data-country-code="true" data-country-searchable="false">
+  <!-- Standard dropdown -->
+</select>
+```
+
+## 📱 Smart Phone Formatting
+
+**Country-aware phone formatting with automatic country code injection** - replaces static formatting with intelligent, international formatting.
+
+```html
+<!-- Country selector -->
+<select name="country" data-country-code="true">
+  <option value="">Select Country</option>
+</select>
+
+<!-- Phone field with country code injection -->
+<input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
+```
+
+**How it works:**
+1. 🌍 User selects country (e.g., United States (+1))
+2. 📱 Phone field auto-injects country code: `+1` 
+3. ⌨️ User types their number: `5551234567`
+4. 🎯 Formats in real-time: `+1 (555) 123-4567`
+5. 🔄 Switching countries updates format automatically
+
+**Supports 240+ countries** with accurate formatting:
+- **US/Canada**: `+1 (555) 123-4567`
+- **UK**: `+44 7911 123456`
+- **France**: `+33 6 12 34 56 78`
+- **Germany**: `+49 30 12345678`
+- **Japan**: `+81 90-1234-5678`
+- And many more!
+
+## 🔗 Conditional Fields
+
+Show or hide form sections based on user input:
+
+```html
+<!-- Trigger field -->
 <select data-shows-field="#project-details" data-trigger-value="project">
-  <option value="">Select type</option>
+  <option value="">Select inquiry type</option>
   <option value="project">New Project</option>
   <option value="support">Support</option>
 </select>
 
+<!-- Hidden section (shows when "project" is selected) -->
 <div id="project-details" style="display: none;">
+  <label>Project Description</label>
   <textarea name="project-description"></textarea>
 </div>
 
@@ -183,601 +321,298 @@ The library only enhances fields that have specific data attributes. Fields with
   <option value="advanced">Advanced</option>
   <option value="expert">Expert</option>
 </select>
-
-<!-- Hide field when condition is met -->
-<input type="checkbox" data-hides-field="#optional-section" value="hide">
 ```
 
-### Custom Validation (Beyond Webflow's Basic Validation)
+## ✅ Custom Validation
+
+Extend Webflow's basic validation with custom patterns:
 
 ```html
 <!-- Custom regex validation -->
 <input type="text" 
        data-custom-validation="^[A-Z][a-z]+$"
-       data-validation-message="Must start with capital letter">
+       data-validation-message="Must start with capital letter"
+       placeholder="First Name">
 
-<!-- Validate on input (real-time) -->
+<!-- Real-time validation -->
 <input type="text" 
        data-custom-validation="^\d{4}$"
        data-validate-on-input="true"
-       data-validation-message="Must be 4 digits">
+       data-validation-message="Must be 4 digits"
+       placeholder="PIN">
 ```
 
-### Field Syncing
+## 📊 Character Counters
+
+Add live character counting to textareas:
 
 ```html
-<!-- Copy value to another field -->
-<input type="text" name="company" data-field-sync="#company-confirm">
-<input type="text" id="company-confirm" readonly>
+<!-- Basic counter -->
+<textarea data-character-counter="true" maxlength="500"></textarea>
 
-<!-- Transform value while syncing -->
+<!-- Custom format and positioning -->
+<textarea data-character-counter="true" 
+          data-counter-format="Words: {current}/{max}"
+          data-counter-position="before"
+          maxlength="500"></textarea>
+```
+
+## 🎨 Input Formatting
+
+Format inputs as users type:
+
+```html
+<!-- US Phone -->
+<input type="tel" data-format="phone-us" placeholder="(555) 123-4567">
+
+<!-- Currency -->
+<input type="text" data-format="currency" placeholder="$0.00">
+
+<!-- Credit Card -->
+<input type="text" data-format="credit-card" placeholder="1234 5678 9012 3456">
+```
+
+## 🔄 Field Syncing
+
+Copy and transform values between fields:
+
+```html
+<!-- Source field -->
 <input type="text" name="username" 
        data-field-sync="#display-name" 
-       data-sync-type="uppercase">
+       data-sync-type="uppercase"
+       placeholder="Enter username">
+
+<!-- Target field (auto-populated) -->
 <input type="text" id="display-name" readonly>
 ```
 
-### Country Code Selects
+## 📏 Auto-Resize Textareas
 
-Automatically populate select fields with **all 245 countries** supported by libphonenumber, each with proper country names and dialing codes. **By default, creates a searchable dropdown** where users can type to filter countries.
-
-**Complete Country Coverage:**
-- ✅ **245 countries mapped** with proper names (no ISO codes like "EH" or "DZ")
-- 🇺🇸 **United States prioritized** - always appears first in the list
-- 🌍 **Format: "Country Name (+Code)"** - e.g., "United States (+1)", "United Kingdom (+44)"
-- 🔍 **Searchable by default** - users can type to filter countries
-- 📱 **Mobile-friendly** with keyboard navigation
+Dynamically adjust textarea height:
 
 ```html
-<!-- Basic searchable country select (shows: United States (+1), United Kingdom (+44), etc.) -->
-<select name="country" data-country-code="true">
-  <option value="" disabled>Select Country</option>
-</select>
-<!-- Creates searchable input where users can type "United" or "+44" to filter -->
+<!-- Basic auto-resize -->
+<textarea data-auto-resize="true"></textarea>
+
+<!-- With constraints -->
+<textarea data-auto-resize="true" 
+          data-min-height="100" 
+          data-max-height="300"></textarea>
 ```
 
-#### **Search Functionality (Default)**
-- ✨ **Type to filter**: Users can type country names or codes to narrow options
-- ⌨️ **Keyboard navigation**: Arrow keys to navigate, Enter to select, Escape to close
-- 🎯 **Smart matching**: Searches both country names and dialing codes
-- ♿ **Accessible**: Maintains form submission compatibility and screen reader support
+## 🎯 Common Use Cases
 
-#### **Configuration Options**
+### Complete Contact Form with Address
 
 ```html
-<!-- Disable search functionality (standard dropdown) -->
-<select data-country-code="true" data-country-searchable="false">
-  <option value="" disabled>Select Country</option>
-</select>
-
-<!-- Custom display format -->
-<select data-country-code="true" data-country-format="name">
-  <!-- Shows: United States -->
-</select>
-
-<select data-country-code="true" data-country-format="code">
-  <!-- Shows: +1 -->
-</select>
-
-<!-- Store country name instead of code -->
-<select data-country-code="true" data-country-value="name">
-  <!-- Value will be "United States" instead of "+1" -->
-</select>
-
-<!-- Sort by country code instead of name (US still appears first) -->
-<select data-country-code="true" data-country-sort-by="code">
-  <!-- Countries sorted by dialing code -->
-</select>
+<form>
+  <!-- Name fields -->
+  <input type="text" name="first-name" placeholder="First Name" required>
+  <input type="text" name="last-name" placeholder="Last Name" required>
+  
+  <!-- Address with Google Places -->
+  <input type="text" name="address" 
+         data-google-places="true" 
+         data-populate-fields="true"
+         placeholder="Start typing your address..." required>
+  
+  <!-- Auto-populated address fields -->
+  <input type="text" name="city" data-address-component="locality" required>
+  <input type="text" name="state" data-address-component="administrative_area_level_1" required>
+  <input type="text" name="country" data-address-component="country" required>
+  <input type="text" name="postal-code" data-address-component="postal_code" required>
+  
+  <!-- Phone with country formatting -->
+  <input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
+  
+  <!-- Message with counter -->
+  <textarea name="message" 
+            data-character-counter="true" 
+            data-auto-resize="true"
+            maxlength="1000"
+            placeholder="Your message"></textarea>
+            
+  <button type="submit">Send Message</button>
+</form>
 ```
 
-**Available Formats:**
-- `name-code` (default): United States (+1)
-- `name`: United States
-- `code`: +1
-
-**Value Options:**
-- `code` (default): Stores the dialing code (+1)
-- `name`: Stores the country name (United States)
-- `full`: Stores both (United States (+1))
-
-### Dynamic Phone Formatting with Country Code Injection
-
-Automatically format phone numbers based on the selected country code **with automatic country code injection**. **Replaces the old `data-format="phone-us"` with intelligent, country-aware formatting.**
+### Project Inquiry Form with Conditional Fields
 
 ```html
-<!-- Country selector (searchable by default) -->
-<select name="country" data-country-code="true">
-  <option value="" disabled>Select Country</option>
-</select>
-
-<!-- Phone input with dynamic formatting and country code injection -->
-<input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
+<form>
+  <!-- Project type selector -->
+  <select name="project-type" data-shows-field="#project-details" data-trigger-value="custom">
+    <option value="">Select project type</option>
+    <option value="template">Template Customization</option>
+    <option value="custom">Custom Development</option>
+  </select>
+  
+  <!-- Conditional project details -->
+  <div id="project-details" style="display: none;">
+    <input type="text" name="budget" data-format="currency" placeholder="Budget">
+    <textarea name="requirements" 
+              data-character-counter="true"
+              maxlength="2000"></textarea>
+  </div>
+  
+  <!-- Contact info -->
+  <input type="email" name="email" required>
+  <input type="tel" name="phone" data-format="phone-us">
+</form>
 ```
 
-**How it works:**
-1. 🌍 User selects a country (e.g., US (+1))
-2. 📱 Phone field **automatically injects** the country code: `+1` (with line break)
-3. ⌨️ User types their number below the country code: `+1\n5551234567`
-4. 🎯 Number formats in real-time: `+1\n(555) 123-4567`
-5. 🔄 If user changes country to GB (+44), field updates to `+44\n` and formatting switches accordingly
+## 🎨 Styling Enhanced Fields
 
-**User Experience:**
-- **Country Code Injection**: Selected country's dialing code (e.g., "+1") is automatically added to the phone field
-- **Line Break Separation**: Country code and phone number are separated by a line break for clarity
-- **Smart Cursor Positioning**: Cursor is positioned after the line break, ready for number input
-- **Preserved User Input**: When switching countries, the phone number portion is preserved while the country code updates
-
-**Comprehensive Country Support:**
-Powered by Google's **libphonenumber** library, supporting **240+ countries** with accurate, up-to-date formatting rules:
-
-- **US/Canada (+1)**: `(555) 123-4567`
-- **UK (+44)**: `07911 123456`
-- **France (+33)**: `06 12 34 56 78`
-- **Germany (+49)**: `030 12345678`
-- **Japan (+81)**: `090-1234-5678`
-- **China (+86)**: `138 0013 8000`
-- **India (+91)**: `98765 43210`
-- **Brazil (+55)**: `(11) 99999-9999`
-- **Australia (+61)**: `0412 345 678`
-- **Russia (+7)**: `8 912 345-67-89`
-- **...and 230+ more countries!**
-
-✨ **Automatic Updates**: Phone formats stay current with international standards  
-🎯 **Smart Formatting**: Handles mobile, landline, and special number formats  
-🌍 **Global Coverage**: Every country with a dialing code is supported  
-🚀 **Zero Maintenance**: No static data to update - everything comes from libphonenumber
-
-```html
-<!-- Advanced configuration -->
-<input type="tel" 
-       name="phone" 
-       data-phone-format=""
-       data-phone-country-field="#specific-country-select"
-       data-phone-update-placeholder="false">
-```
-
-### Google Places Autocomplete
-
-**🎯 The most powerful address input solution** - leverages Google's global address database for accurate, fast address entry with automatic field population.
-
-**Why Google Places is Superior:**
-- ✅ **Familiar UX**: Users recognize Google's autocomplete interface
-- ✅ **Global coverage**: Accurate data for addresses worldwide  
-- ✅ **Instant validation**: Only real addresses can be selected
-- ✅ **Complete data**: Gets street, city, state, postal code, country in one interaction
-- ✅ **Mobile optimized**: Works perfectly on mobile devices
-- ✅ **Auto-population**: Fills multiple form fields automatically
-
-#### **Basic Setup**
-
-**Prerequisites:**
-1. **Google API Key**: Get one from [Google Cloud Console](https://console.cloud.google.com/)
-2. **Enable Places API**: In your Google Cloud project
-3. **Include Google Maps JavaScript API**:
-
-```html
-<!-- Add BEFORE your Webflow Field Enhancer script -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
-<script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@latest/dist/webflow-forms.min.js"></script>
-```
-
-#### **Implementation Examples**
-
-**Single Address Field (Simplest):**
-```html
-<!-- User types address, gets autocomplete suggestions -->
-<input type="text" name="address" 
-       data-google-places="true" 
-       data-populate-fields="true"
-       placeholder="Start typing your address...">
-
-<!-- These fields get auto-populated when user selects an address -->
-<input type="text" name="street" data-address-component="street_number,route">
-<input type="text" name="city" data-address-component="locality">
-<select name="state" data-address-component="administrative_area_level_1" data-state-name="true">
-  <option value="">Select State</option>
-</select>
-<input type="text" name="postal-code" data-address-component="postal_code">
-<select name="country" data-address-component="country" data-country-code="true">
-  <option value="">Select Country</option>
-</select>
-```
-
-**Component-Based Fields (More Control):**
-```html
-<!-- Address search field -->
-<input type="text" name="address-search" 
-       data-google-places="true" 
-       data-populate-fields="true"
-       placeholder="Search for your address">
-
-<!-- Individual address components (populated automatically) -->
-<label>Street Address</label>
-<input type="text" name="street" data-address-component="street_number,route" readonly>
-
-<label>City</label>
-<input type="text" name="city" data-address-component="locality" readonly>
-
-<label>State/Province</label>
-<select name="state" data-address-component="administrative_area_level_1" data-state-name="true">
-  <option value="">Select State</option>
-</select>
-
-<label>Postal Code</label>
-<input type="text" name="postal-code" data-address-component="postal_code" readonly>
-
-<label>Country</label>
-<select name="country" data-address-component="country" data-country-code="true">
-  <option value="">Select Country</option>
-</select>
-```
-
-**Advanced Configuration:**
-```html
-<!-- Restrict to specific countries and address types -->
-<input type="text" name="address" 
-       data-google-places="true" 
-       data-populate-fields="true"
-       data-places-countries="US,CA,GB"
-       data-places-types="address"
-       placeholder="Enter US, Canada, or UK address">
-
-<!-- Use full state names instead of abbreviations -->
-<select name="state" 
-        data-address-component="administrative_area_level_1" 
-        data-state-name="true"
-        data-use-full-name="true">
-  <!-- Will show "California" instead of "CA" -->
-</select>
-```
-
-#### **Address Component Mapping**
-
-| Component Type | Description | Example |
-|----------------|-------------|---------|
-| `street_number` | Street number | "123" |
-| `route` | Street name | "Main Street" |
-| `street_number,route` | Full street address | "123 Main Street" |
-| `locality` | City | "Los Angeles" |
-| `administrative_area_level_1` | State/Province | "CA" or "California" |
-| `administrative_area_level_2` | County | "Los Angeles County" |
-| `country` | Country | "US" or "United States" |
-| `postal_code` | Postal/ZIP code | "90210" |
-| `postal_code_suffix` | ZIP+4 extension | "1234" |
-| `subpremise` | Apartment/Suite | "Apt 4B" |
-| `premise` | Building number | "Building A" |
-
-#### **User Experience Flow**
-
-```
-User types: "123 Main St, Los Ang..."
-    ↓
-Google suggests: "123 Main Street, Los Angeles, CA 90210, USA"
-    ↓
-User clicks suggestion
-    ↓
-✨ Auto-populate all fields:
-   - Street: "123 Main Street"
-   - City: "Los Angeles"
-   - State: "CA" (or "California" if data-use-full-name="true")
-   - Postal: "90210"
-   - Country: "US" (matches existing country dropdown)
-```
-
-#### **Integration with Existing Features**
-
-**Works seamlessly with:**
-- ✅ **Country Code Dropdowns**: Auto-selects matching country
-- ✅ **State Fields**: Auto-populates or creates state options
-- ✅ **Phone Formatting**: Country selection triggers phone format updates
-- ✅ **Form Validation**: Webflow's native validation still works
-- ✅ **Custom Events**: Listen for address selection events
-
-**Combined Example:**
-```html
-<!-- Address autocomplete -->
-<input type="text" name="address" data-google-places="true" data-populate-fields="true">
-
-<!-- Auto-populated country (triggers phone formatting) -->
-<select name="country" data-country-code="true" data-address-component="country">
-  <option value="">Select Country</option>
-</select>
-
-<!-- Phone field with dynamic formatting based on selected country -->
-<input type="tel" name="phone" data-phone-format="" data-phone-type="mobile">
-
-<!-- Auto-populated state -->
-<select name="state" data-state-name="true" data-address-component="administrative_area_level_1">
-  <option value="">Select State</option>
-</select>
-```
-
-#### **Customization Options**
-
-**Restrict Place Types:**
-```html
-<!-- Only addresses (no businesses) -->
-<input data-google-places="true" data-places-types="address">
-
-<!-- Only establishments (businesses) -->
-<input data-google-places="true" data-places-types="establishment">
-
-<!-- Multiple types -->
-<input data-google-places="true" data-places-types="address,establishment">
-```
-
-**Restrict Countries:**
-```html
-<!-- US and Canada only -->
-<input data-google-places="true" data-places-countries="US,CA">
-
-<!-- European countries -->
-<input data-google-places="true" data-places-countries="GB,FR,DE,IT,ES">
-```
-
-**Display Preferences:**
-```html
-<!-- Use full state names -->
-<select data-address-component="administrative_area_level_1" data-use-full-name="true">
-<!-- Shows "California" instead of "CA" -->
-
-<!-- Use abbreviations (default) -->
-<select data-address-component="administrative_area_level_1">
-<!-- Shows "CA" -->
-```
-
-#### **Custom Events**
-
-Listen to Google Places events:
-
-```javascript
-// Address selected
-document.addEventListener('webflowField:placeSelected', (e) => {
-    console.log('Address selected:', e.detail.formattedAddress);
-    console.log('Address components:', e.detail.addressComponents);
-});
-
-// Fields populated
-document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
-    console.log('Populated', e.detail.populatedFields, 'fields');
-});
-
-// Google Places setup complete
-document.addEventListener('webflowField:googlePlacesSetup', (e) => {
-    console.log('Google Places ready with options:', e.detail.options);
-});
-```
-
-#### **Error Handling & Fallbacks**
-
-**Graceful degradation:**
-- ✅ **No Google API**: Fields work as normal text inputs
-- ✅ **API key issues**: Console warning, manual entry still works
-- ✅ **No internet**: Falls back to manual address entry
-- ✅ **Unsupported browsers**: Progressive enhancement
-
-**API Key Management:**
-```html
-<!-- Development -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_DEV_API_KEY&libraries=places"></script>
-
-<!-- Production (restrict by domain) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_PROD_API_KEY&libraries=places"></script>
-```
-
-#### **Cost Considerations**
-
-**Google Places API Pricing (2024):**
-- **Autocomplete**: $2.83 per 1,000 requests
-- **Free tier**: $200/month credit (≈70,000 autocomplete requests)
-- **Typical usage**: Most Webflow sites stay within free tier
-
-**Cost optimization:**
-- ✅ **Restrict by country**: Reduces irrelevant suggestions
-- ✅ **Restrict by type**: Limits to addresses only
-- ✅ **Session tokens**: Reduce costs for multiple requests (handled automatically)
-
-This provides the most user-friendly, accurate address input experience possible! 🎯
-
-### Disable Enhancement
-
-```html
-<!-- Disable all enhancements for this form -->
-<form data-webflow-fields-disable="true">
-
-<!-- Disable enhancement for specific field -->
-<input type="text" data-webflow-fields-disable="true">
-```
-
-## CSS Classes for Styling
+The library adds CSS classes for styling:
 
 ```css
-/* Field is enhanced by the library */
-.wf-field-enhanced {
-    /* Your enhanced field styles */
+/* Auto-populated fields */
+.wf-auto-populated {
+  background-color: #f0f8ff;
+  border-color: #007bff;
 }
 
-/* Field has focus (beyond Webflow's default) */
-.wf-field-focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-/* User is actively typing */
-.wf-field-typing {
-    border-color: #10b981;
+/* User-edited fields */
+.wf-user-edited {
+  border-color: #28a745;
+  background-color: #f8fff9;
 }
 
 /* Character counter */
 .wf-character-counter {
-    font-size: 12px;
-    color: #666;
-    text-align: right;
-    margin-top: 4px;
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 5px;
 }
 
-.wf-counter-warning {
-    color: #f59e0b;
-}
+/* Counter warnings */
+.wf-counter-warning { color: #ffc107; }
+.wf-counter-danger { color: #dc3545; }
 
-.wf-counter-danger {
-    color: #ef4444;
-}
-
-/* Country select components */
-.wf-country-select-container {
-    position: relative;
-    width: 100%;
+/* Country dropdown */
+.wf-country-dropdown {
+  position: relative;
 }
 
 .wf-country-search {
-    /* Inherits styling from original select field */
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
 }
 
-/* Country dropdown styling is handled automatically by the library */
-/* You can override these classes if needed for custom styling */
-.wf-country-dropdown {
-    /* Dropdown positioning and basic styles are applied via JavaScript */
-}
-
-.wf-country-option {
-    /* Option styling is minimal to allow Webflow defaults */
+.wf-country-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
 }
 ```
 
-## Complete Example
+## 🔧 JavaScript API
 
-```html
-<form data-name="Enhanced Contact Form">
-  
-  <!-- Standard Webflow field (no enhancement) -->
-  <input type="text" name="name" required>
-  
-  <!-- Country selector with search -->
-  <select name="country" data-country-code="true">
-    <option value="" disabled>Select Country</option>
-  </select>
-  
-  <!-- Dynamic phone formatting based on country -->
-  <input type="tel" name="phone" data-phone-format="" placeholder="Phone Number">
-  
-  <!-- Service type with conditional field -->
-  <select name="service" data-shows-field="#project-budget" data-trigger-value="web-design">
-    <option value="">Select Service</option>
-    <option value="web-design">Web Design</option>
-    <option value="consulting">Consulting</option>
-  </select>
-  
-  <!-- Conditional field (hidden by default) -->
-  <div id="project-budget" style="display: none;">
-    <input type="text" name="budget" data-format="currency" placeholder="Project Budget">
-  </div>
-  
-  <!-- Auto-resize textarea with character counter -->
-  <textarea name="message" 
-            data-auto-resize="true"
-            data-character-counter="true"
-            data-counter-format="Characters: {current}/{max}"
-            maxlength="1000"
-            placeholder="Tell us about your project..."></textarea>
-  
-  <!-- Company name that syncs to display name -->
-  <input type="text" name="company" 
-         data-field-sync="#display-company" 
-         data-sync-type="uppercase">
-         
-  <input type="text" id="display-company" 
-         placeholder="Company name will appear here" readonly>
-  
-  <!-- Webflow + Formly handle submission -->
-  <input type="submit" value="Send Message">
-</form>
-```
-
-## Custom Events
-
-Listen to enhancement events:
+Access the library programmatically:
 
 ```javascript
-// Input formatting events
-document.addEventListener('webflowField:formatted', (e) => {
-    console.log('Field formatted:', e.detail.format);
-});
+// Access the main object
+const enhancer = window.WebflowFieldEnhancer;
 
-// Character counter events
-document.addEventListener('webflowField:characterCount', (e) => {
-    console.log('Character count:', e.detail.current, '/', e.detail.max);
-});
+// Manually enhance new fields
+enhancer.enhanceSpecificField(document.getElementById('new-field'));
 
-// Conditional field events
-document.addEventListener('webflowField:conditionalChange', (e) => {
-    console.log('Field visibility changed:', e.detail.visible);
-});
-
-// Auto-resize events
-document.addEventListener('webflowField:resized', (e) => {
-    console.log('Textarea resized to:', e.detail.height, 'px');
-});
+// Refresh all enhancements
+enhancer.refresh();
 ```
 
-## API Methods
+### 📡 Available Events
+
+Listen for library events to integrate with your application:
 
 ```javascript
-// Refresh enhancements (useful after adding fields dynamically)
-WebflowFieldEnhancer.refresh();
+// Google Places events
+document.addEventListener('webflowField:placeSelected', (e) => {
+  console.log('Address selected:', e.detail.formattedAddress);
+  console.log('Place details:', e.detail.place);
+});
 
-// Enhance a specific field
-WebflowFieldEnhancer.enhanceSpecificField(document.getElementById('my-field'));
+document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
+  console.log('Fields populated:', e.detail.populatedFields);
+  console.log('Address components:', e.detail.addressComponents);
+});
+
+document.addEventListener('webflowField:googlePlacesSetup', (e) => {
+  console.log('Google Places initialized on field:', e.detail.field);
+});
+
+// Field enhancement events
+document.addEventListener('webflowField:fieldEnhanced', (e) => {
+  console.log('Field enhanced:', e.detail.field, 'Type:', e.detail.type);
+});
+
+document.addEventListener('webflowField:countryChanged', (e) => {
+  console.log('Country changed to:', e.detail.country);
+  console.log('Country code:', e.detail.countryCode);
+});
+
+document.addEventListener('webflowField:phoneFormatted', (e) => {
+  console.log('Phone formatted:', e.detail.formattedNumber);
+  console.log('Original:', e.detail.originalNumber);
+});
 ```
 
-## Perfect Integration Stack
+## 🐛 Troubleshooting
 
-1. **Webflow** - Form structure, basic validation, styling
-2. **This Library** - Advanced field behaviors and interactions  
-3. **Formly** - Form submission, data processing, integrations
+### Google Places Not Working
 
-Each handles what it does best, with no conflicts or overlap!
+1. **Check API Key**: Ensure your Google Maps API key is valid
+2. **Enable Places API**: Verify Places API is enabled in Google Cloud Console
+3. **Check Console**: Look for error messages in browser developer tools
+4. **Fallback**: All fields remain functional as text inputs if API fails
 
-## Browser Support
+### Phone Formatting Issues
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- IE11+
+1. **Country Selection**: Ensure country field has `data-country-code="true"`
+2. **Phone Field**: Verify phone field has `data-phone-format=""`
+3. **libphonenumber**: Library handles 240+ countries automatically
 
-## License
+### Fields Not Enhancing
 
-MIT License - see LICENSE file for details.
+1. **Data Attributes**: Check spelling of data attributes
+2. **Script Loading**: Ensure library loads after DOM is ready
+3. **Form Structure**: Fields should be within a `<form>` element
+4. **Console Errors**: Check browser console for JavaScript errors
 
-## Changelog
+## 📈 Performance
 
-### v1.1.0 (Latest)
+- **Bundle Size**: ~187KB minified (includes libphonenumber)
+- **Dependencies**: Self-contained (no external dependencies except Google Maps for Places)
+- **Initialization**: Automatic on DOM ready
+- **Memory**: Efficient event handling with cleanup
 
-**🌍 Complete Country Coverage Update**
-- ✅ **All 245 countries mapped** with proper names (no more ISO codes like "EH" or "DZ")
-- 🇺🇸 **United States prioritized** - always appears first in country lists
-- 🌍 **Consistent format**: All countries display as "Country Name (+Code)"
-- 📝 **Examples**: "United States (+1)", "United Kingdom (+44)", "Western Sahara (+212)"
+## 🤝 Contributing
 
-**🔧 Enhanced Country Code Features**
-- 🔍 **Searchable by default** - users can type to filter countries
-- ⌨️ **Keyboard navigation** - arrow keys, enter, escape support
-- 📱 **Mobile-friendly** interface
-- ♿ **Accessibility** maintained for screen readers
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-**📚 Documentation Updates**
-- 📖 **Comprehensive data attributes reference** with all 17+ attributes
-- 🎯 **Clear examples** for every feature
-- 🔗 **Common combinations** guide
-- 🎨 **CSS styling** reference
+## 📄 License
 
-**🚀 Technical Improvements**
-- 📦 **158KB built file** with libphonenumber integration
-- 🌐 **240+ countries** with accurate phone formatting
-- 🔄 **Dynamic phone formatting** based on country selection
-- ⚡ **Zero maintenance** - auto-updates with libphonenumber
+MIT License - see [LICENSE](LICENSE) file for details.
 
-### Previous Versions
-- **v1.0.x**: Initial release with basic field enhancements
-- **v0.x**: Development versions 
+## 🔗 Links
+
+- **Repository**: [GitHub](https://github.com/chrisbrummer/webflow-forms)
+- **Issues**: [Report Issues](https://github.com/chrisbrummer/webflow-forms/issues)
+- **CDN**: [jsDelivr](https://www.jsdelivr.com/package/gh/chrisbrummer/webflow-forms)
+- **NPM**: [Package](https://www.npmjs.com/package/webflow-forms)
+
+---
+
+**Made with ❤️ for the Webflow community** 

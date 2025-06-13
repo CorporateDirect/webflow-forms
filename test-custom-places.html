@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Google Places Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        
+        .wf-auto-populated {
+            background-color: #e3f2fd !important;
+            border-color: #2196f3 !important;
+        }
+        
+        .wf-manual-edit {
+            background-color: #f1f8e9 !important;
+            border-color: #4caf50 !important;
+        }
+        
+        .submit-btn {
+            background: #2196f3;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .submit-btn:hover {
+            background: #1976d2;
+        }
+        
+        .info-box {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            color: #2e7d32;
+        }
+        
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+        }
+        
+        /* Custom dropdown styles are handled by the JS */
+        .wf-places-dropdown {
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>🏠 Custom Google Places Integration Test</h1>
+        
+        <div class="info-box">
+            <h3>How it works:</h3>
+            <ul>
+                <li><strong>Start typing</strong> in the Address field to see custom autocomplete suggestions</li>
+                <li><strong>Use arrow keys</strong> to navigate, Enter to select, Escape to close</li>
+                <li><strong>Auto-population:</strong> Other fields will auto-fill with blue highlighting</li>
+                <li><strong>Manual editing:</strong> Click any field to edit directly (green highlighting)</li>
+                <li><strong>Smart protection:</strong> Manually edited fields won't be overwritten</li>
+            </ul>
+        </div>
+        
+        <form id="test-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first-name">First Name</label>
+                    <input type="text" id="first-name" name="first-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="last-name">Last Name</label>
+                    <input type="text" id="last-name" name="last-name" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="address">Address *</label>
+                <input 
+                    type="text" 
+                    id="address" 
+                    name="address" 
+                    data-google-places="true"
+                    data-populate-fields="true"
+                    data-places-countries="US,CA,GB"
+                    data-address-component="street_number,route"
+                    placeholder="Start typing your address..."
+                    required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input 
+                        type="text" 
+                        id="city" 
+                        name="city"
+                        data-address-component="locality"
+                        placeholder="City">
+                </div>
+                <div class="form-group">
+                    <label for="state">State/Province/Region</label>
+                    <input 
+                        type="text" 
+                        id="state" 
+                        name="state"
+                        data-address-component="administrative_area_level_1"
+                        data-use-full-name="true"
+                        placeholder="State/Province">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="postal-code">Postal Code</label>
+                    <input 
+                        type="text" 
+                        id="postal-code" 
+                        name="postal-code"
+                        data-address-component="postal_code"
+                        placeholder="Postal Code">
+                </div>
+                <div class="form-group">
+                    <label for="country">Country</label>
+                    <input 
+                        type="text" 
+                        id="country" 
+                        name="country"
+                        data-address-component="country"
+                        data-use-full-name="true"
+                        placeholder="Country">
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn">Submit Form</button>
+        </form>
+    </div>
+
+    <!-- Google Maps API with your API key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAp2G9WY45FlgeJEWlY1hdOm_pM3zR2E5E&libraries=places"></script>
+    
+    <!-- Our enhanced webflow-forms library -->
+    <script src="dist/webflow-forms.min.js"></script>
+    
+    <script>
+        // Form submission handler for testing
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            console.log('Form submitted with data:', data);
+            alert('Form submitted! Check console for data.');
+        });
+        
+        // Listen for custom events
+        document.addEventListener('webflowField:placeSelected', function(e) {
+            console.log('Place selected:', e.detail);
+        });
+        
+        document.addEventListener('webflowField:addressFieldsPopulated', function(e) {
+            console.log('Address fields populated:', e.detail);
+        });
+        
+        document.addEventListener('webflowField:googlePlacesSetup', function(e) {
+            console.log('Google Places setup complete:', e.detail);
+        });
+    </script>
+</body>
+</html> 
