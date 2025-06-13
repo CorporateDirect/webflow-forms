@@ -2580,10 +2580,33 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 
                 if (countryCode || countryName) {
                     // Check if this is a custom searchable country dropdown
-                    const container = selectField.closest('[data-country-select-container]');
+                    // First check if the current field is already in a container
+                    let container = selectField.closest('[data-country-select-container]');
+                    
+                    // If not found, look for containers in the same form
+                    if (!container) {
+                        const form = selectField.closest('form') || document;
+                        const allContainers = form.querySelectorAll('[data-country-select-container]');
+                        
+                        // Find container that has a hidden select with matching name or id
+                        for (const cont of allContainers) {
+                            const hiddenSel = cont.querySelector('select[style*="display: none"]');
+                            if (hiddenSel && (hiddenSel.name === selectField.name || hiddenSel.id === selectField.id)) {
+                                container = cont;
+                                break;
+                            }
+                        }
+                    }
+                    
                     const searchInput = container ? container.querySelector('[data-country-search]') : null;
                     const hiddenSelect = container ? container.querySelector('select[style*="display: none"]') : null;
                     const dropdownList = container ? container.querySelector('[data-country-dropdown]') : null;
+                    
+                    console.log(`  Debug - Field name/id: ${selectField.name || selectField.id}`);
+                    console.log(`  Debug - Container found: ${!!container}`);
+                    console.log(`  Debug - Search input found: ${!!searchInput}`);
+                    console.log(`  Debug - Hidden select found: ${!!hiddenSelect}`);
+                    console.log(`  Debug - Dropdown list found: ${!!dropdownList}`);
                     
                     if (searchInput && hiddenSelect && dropdownList) {
                         console.log(`  Detected custom searchable country dropdown`);
