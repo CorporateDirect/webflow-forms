@@ -232,6 +232,51 @@
     <script src="dist/webflow-forms.min.js"></script>
     
     <script>
+        // IMMEDIATE POST-LIBRARY DEBUGGING
+        console.log('📚 LIBRARY LOADED - Setting up event listeners...');
+        
+        // Listen for library events immediately
+        document.addEventListener('webflowField:addressFieldsPopulated', (e) => {
+            console.log('🔥 IMMEDIATE: addressFieldsPopulated event caught!', e.detail);
+            
+            // Force fix the country field
+            setTimeout(() => {
+                const countryField = document.querySelector('[data-address-component="country"]');
+                if (countryField && countryField.value === 'US') {
+                    console.log('🔧 IMMEDIATE FIX: Changing US to United States');
+                    countryField.value = 'United States';
+                    
+                    // Try to sync phone country
+                    const phoneCountryDropdown = document.querySelector('[data-country-code="true"]');
+                    if (phoneCountryDropdown) {
+                        console.log('📞 IMMEDIATE: Found phone country dropdown, syncing...');
+                        
+                        // Search for United States option
+                        const options = phoneCountryDropdown.querySelectorAll('option');
+                        console.log('📞 Phone dropdown has', options.length, 'options');
+                        
+                        for (const option of options) {
+                            const text = option.textContent.toLowerCase();
+                            const value = option.value.toLowerCase();
+                            
+                            if (text.includes('united states') || text.includes('usa') || value.includes('+1') || text.includes('america')) {
+                                phoneCountryDropdown.value = option.value;
+                                console.log('✅ IMMEDIATE: Phone country set to:', option.textContent);
+                                phoneCountryDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }, 100);
+        }, true); // Use capture phase
+    </script>
+    
+    <script>
+        // IMMEDIATE DEBUGGING - This should show up first
+        console.log('🚀🚀🚀 CUSTOM SCRIPT IS LOADING! 🚀🚀🚀');
+        alert('🚀 CUSTOM SCRIPT LOADED! Check console for debug output.');
+        
         // Enhanced form behavior and debugging
         console.log('🚀 CUSTOM: Script is loading...');
         

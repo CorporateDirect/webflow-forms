@@ -2516,9 +2516,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     if (addressMap[trimmedType]) {
                         // Use shortText for states/countries, longText for others
                         if (trimmedType === 'administrative_area_level_1' || trimmedType === 'country') {
-                            value = targetField.dataset.useFullName === 'true' ? 
+                            // For country fields, default to full name unless explicitly set to use short
+                            const useFullName = targetField.dataset.useFullName;
+                            const shouldUseFullName = useFullName !== 'false' && trimmedType === 'country';
+                            
+                            value = shouldUseFullName ? 
                                 addressMap[trimmedType].longText : 
                                 addressMap[trimmedType].shortText;
+                            
+                            console.log(`  Field ${targetField.name || targetField.id} - use-full-name: "${useFullName}", defaulting to: ${shouldUseFullName ? 'full' : 'short'}`);
                         } else {
                             value = addressMap[trimmedType].longText;
                         }
@@ -2579,6 +2585,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     console.log(`  No value found for field ${targetField.name || targetField.id} with components: ${componentTypes.join(', ')}`);
                 }
             });
+
+            // Auto-sync phone country dropdown if address has country data
+            if (addressMap.country) {
+                setTimeout(() => {
+                    this.syncPhoneCountryFromAddress(addressMap.country);
+                }, 100);
+            }
 
             this.triggerCustomEvent(sourceField, 'addressFieldsPopulated', {
                 addressMap: addressMap,
@@ -2931,6 +2944,91 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             field.addEventListener('blur', () => {
                 field.classList.remove('wf-user-focused');
             });
+        },
+
+        // Sync phone country dropdown when address country is populated
+        syncPhoneCountryFromAddress: function(countryData) {
+            const countryName = countryData.longText; // e.g., "United States"
+            const countryCode = countryData.shortText; // e.g., "US"
+            
+            console.log(`🔄 Auto-syncing phone country dropdown with address country: ${countryName} (${countryCode})`);
+            
+            // Find phone country dropdowns using data-country-code="true"
+            const phoneCountryDropdowns = document.querySelectorAll('[data-country-code="true"]');
+            
+            phoneCountryDropdowns.forEach(dropdown => {
+                console.log(`📞 Found phone country dropdown: ${dropdown.name || dropdown.id}`);
+                
+                // Check if it's a searchable dropdown in a container
+                const container = dropdown.closest('[data-country-select-container]');
+                if (container) {
+                    console.log(`📞 Searchable dropdown detected`);
+                    const searchInput = container.querySelector('[data-country-search]');
+                    const hiddenSelect = container.querySelector('select[style*="display: none"]');
+                    
+                    if (searchInput && hiddenSelect) {
+                        this.syncSearchableCountryDropdown(searchInput, hiddenSelect, countryName, countryCode);
+                    }
+                } else {
+                    console.log(`📞 Standard dropdown detected`);
+                    this.syncStandardCountryDropdown(dropdown, countryName, countryCode);
+                }
+            });
+        },
+
+        // Sync searchable country dropdown
+        syncSearchableCountryDropdown: function(searchInput, hiddenSelect, countryName, countryCode) {
+            const options = hiddenSelect.querySelectorAll('option');
+            console.log(`📞 Searching ${options.length} options for: ${countryName} or ${countryCode}`);
+            
+            for (const option of options) {
+                const text = option.textContent.toLowerCase();
+                const value = option.value.toLowerCase();
+                
+                // Look for United States variations and +1 country code
+                if (text.includes('united states') || text.includes('usa') || 
+                    value.includes('+1') || text.includes('america') ||
+                    text.includes(countryName.toLowerCase()) ||
+                    value.includes(countryCode.toLowerCase())) {
+                    
+                    searchInput.value = option.textContent;
+                    hiddenSelect.value = option.value;
+                    
+                    console.log(`✅ Phone country synced to: ${option.textContent}`);
+                    
+                    // Trigger change event
+                    const changeEvent = new Event('change', { bubbles: true });
+                    hiddenSelect.dispatchEvent(changeEvent);
+                    break;
+                }
+            }
+        },
+
+        // Sync standard country dropdown
+        syncStandardCountryDropdown: function(dropdown, countryName, countryCode) {
+            const options = dropdown.querySelectorAll('option');
+            console.log(`📞 Searching ${options.length} options for: ${countryName} or ${countryCode}`);
+            
+            for (const option of options) {
+                const text = option.textContent.toLowerCase();
+                const value = option.value.toLowerCase();
+                
+                // Look for United States variations and +1 country code
+                if (text.includes('united states') || text.includes('usa') || 
+                    value.includes('+1') || text.includes('america') ||
+                    text.includes(countryName.toLowerCase()) ||
+                    value.includes(countryCode.toLowerCase())) {
+                    
+                    dropdown.value = option.value;
+                    
+                    console.log(`✅ Phone country synced to: ${option.textContent}`);
+                    
+                    // Trigger change event
+                    const changeEvent = new Event('change', { bubbles: true });
+                    dropdown.dispatchEvent(changeEvent);
+                    break;
+                }
+            }
         }
     };
 
