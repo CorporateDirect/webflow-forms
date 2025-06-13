@@ -2479,6 +2479,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             fieldsToPopulate.forEach(targetField => {
                 const componentTypes = targetField.dataset.addressComponent.split(',');
                 console.log(`Processing field: ${targetField.name || targetField.id} with components: ${componentTypes.join(', ')}`);
+                
+                // Skip the main address field if it already has the full address from selection
+                if (targetField === sourceField && targetField.value && targetField.value.length > 20) {
+                    console.log(`  Skipping main address field - already has full address: "${targetField.value}"`);
+                    return;
+                }
+                
                 let value = '';
 
                 // Try each component type until we find a match
@@ -2486,7 +2493,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     const trimmedType = componentType.trim();
                     if (addressMap[trimmedType]) {
                         // Use shortText for states/countries, longText for others
-                        if (trimmedType === 'administrativeAreaLevel1' || trimmedType === 'country') {
+                        if (trimmedType === 'administrative_area_level_1' || trimmedType === 'country') {
                             value = targetField.dataset.useFullName === 'true' ? 
                                 addressMap[trimmedType].longText : 
                                 addressMap[trimmedType].shortText;
@@ -2499,10 +2506,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
 
                 // Special handling for combined fields (e.g., street number + route)
-                if (componentTypes.includes('streetNumber') && componentTypes.includes('route')) {
-                    const streetNumber = addressMap['streetNumber']?.longText || '';
+                if (componentTypes.includes('street_number') && componentTypes.includes('route')) {
+                    const streetNumber = addressMap['street_number']?.longText || '';
                     const route = addressMap['route']?.longText || '';
                     value = `${streetNumber} ${route}`.trim();
+                    console.log(`  Combined street address: ${value}`);
                 }
 
                 // Populate the field
@@ -2580,6 +2588,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     // Find option by country code or name
                     const options = selectField.querySelectorAll('option');
                     let optionFound = false;
+                    
+                    // Debug: log all available options
+                    console.log(`  Available options:`, Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")"`));
                     
                     for (const option of options) {
                         const optionValue = option.value.trim();
