@@ -2575,9 +2575,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         populateSelectField: function(selectField, value, addressMap) {
             console.log(`Populating select field: ${selectField.name || selectField.id} with value: ${value}`);
             
-            // For country fields (both legacy data-country-code and new data-address-component)
-            if (selectField.dataset.countryCode === 'true' || 
-                selectField.dataset.addressComponent?.includes('country')) {
+            // For country fields - prioritize address component fields with Google Places attributes
+            if (selectField.dataset.addressComponent?.includes('country') && 
+                selectField.dataset.googlePlaces === 'true') {
+                // This is an address component field (for Google Places population)
                 
                 const countryCode = addressMap['country']?.shortText;
                 const countryName = addressMap['country']?.longText;
@@ -2752,6 +2753,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         }
                     }
                 }
+                return;
+            } else if (selectField.dataset.countryCode === 'true') {
+                // This is a legacy country code field (not for Google Places population)
+                console.log(`  Legacy country field detected - skipping Google Places population`);
                 return;
             }
 
