@@ -2607,6 +2607,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         setupManualEditTracking: function(field) {
             let hasUserInput = false;
             
+            // Skip manual edit tracking for Google Places autocomplete fields
+            // They need to trigger autocomplete on input, not be marked as manual edits
+            if (field.dataset.googlePlaces === 'true') {
+                console.log(`Skipping manual edit tracking for Google Places field: ${field.name || field.id}`);
+                return;
+            }
+            
             // For SELECT fields, track change events instead of input
             if (field.tagName === 'SELECT') {
                 field.addEventListener('change', (e) => {
