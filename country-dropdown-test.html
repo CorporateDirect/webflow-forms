@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Google Places Integration Test</title>
+    <title>Country Dropdown Test</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -42,7 +42,7 @@
             color: #555;
         }
         
-        input[type="text"], input[type="email"] {
+        input[type="text"], select {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
@@ -52,7 +52,7 @@
             box-sizing: border-box;
         }
         
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #2196f3;
         }
@@ -103,40 +103,25 @@
         .info-box li {
             margin-bottom: 5px;
         }
-        
-        /* Custom dropdown styles are handled by the JS */
-        .wf-places-dropdown {
-            font-family: inherit;
-        }
     </style>
 </head>
 <body>
     <div class="form-container">
-        <h1>🏠 Custom Google Places Integration Test</h1>
+        <h1>🌍 Country Dropdown Test</h1>
         
         <div class="info-box">
-            <h3>How it works:</h3>
+            <h3>Testing your exact setup:</h3>
             <ul>
-                <li><strong>Start typing</strong> in the Address field to see custom autocomplete suggestions</li>
-                <li><strong>Use arrow keys</strong> to navigate, Enter to select, Escape to close</li>
-                <li><strong>Auto-population:</strong> Other fields will auto-fill with blue highlighting</li>
-                <li><strong>Manual editing:</strong> Click any field to edit directly (green highlighting)</li>
-                <li><strong>Smart protection:</strong> Manually edited fields won't be overwritten</li>
+                <li><strong>Country field:</strong> SELECT dropdown with your exact data attributes</li>
+                <li><strong>data-address-component="country"</strong></li>
+                <li><strong>data-use-full-name="true"</strong></li>
+                <li><strong>data-google-places="true"</strong></li>
+                <li><strong>data-populate-fields="true"</strong></li>
             </ul>
+            <p><strong>Test:</strong> Type an address in the Address field and see the country dropdown auto-select!</p>
         </div>
         
         <form id="test-form">
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="first-name">First Name</label>
-                    <input type="text" id="first-name" name="first-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="last-name">Last Name</label>
-                    <input type="text" id="last-name" name="last-name" required>
-                </div>
-            </div>
-            
             <div class="form-group">
                 <label for="address">Address *</label>
                 <input 
@@ -145,7 +130,7 @@
                     name="address" 
                     data-google-places="true"
                     data-populate-fields="true"
-                    data-places-countries="US,CA,GB"
+                    data-places-countries="US,CA,GB,AU,DE,FR,IT,ES,JP,BR"
                     data-address-component="street_number,route"
                     placeholder="Start typing your address..."
                     required>
@@ -184,14 +169,79 @@
                         placeholder="Postal Code">
                 </div>
                 <div class="form-group">
-                    <label for="country">Country</label>
-                    <input 
-                        type="text" 
+                    <label for="country">Country (Your Setup)</label>
+                    <select 
                         id="country" 
                         name="country"
                         data-address-component="country"
                         data-use-full-name="true"
-                        placeholder="Country">
+                        data-google-places="true"
+                        data-populate-fields="true">
+                        <option value="">Select Country</option>
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="AU">Australia</option>
+                        <option value="DE">Germany</option>
+                        <option value="FR">France</option>
+                        <option value="IT">Italy</option>
+                        <option value="ES">Spain</option>
+                        <option value="JP">Japan</option>
+                        <option value="BR">Brazil</option>
+                        <option value="MX">Mexico</option>
+                        <option value="IN">India</option>
+                        <option value="CN">China</option>
+                        <option value="RU">Russia</option>
+                        <option value="ZA">South Africa</option>
+                        <option value="EG">Egypt</option>
+                        <option value="NG">Nigeria</option>
+                        <option value="KE">Kenya</option>
+                        <option value="AR">Argentina</option>
+                        <option value="CL">Chile</option>
+                        <option value="CO">Colombia</option>
+                        <option value="PE">Peru</option>
+                        <option value="VE">Venezuela</option>
+                        <option value="NL">Netherlands</option>
+                        <option value="BE">Belgium</option>
+                        <option value="CH">Switzerland</option>
+                        <option value="AT">Austria</option>
+                        <option value="SE">Sweden</option>
+                        <option value="NO">Norway</option>
+                        <option value="DK">Denmark</option>
+                        <option value="FI">Finland</option>
+                        <option value="IE">Ireland</option>
+                        <option value="PT">Portugal</option>
+                        <option value="GR">Greece</option>
+                        <option value="PL">Poland</option>
+                        <option value="CZ">Czech Republic</option>
+                        <option value="HU">Hungary</option>
+                        <option value="RO">Romania</option>
+                        <option value="BG">Bulgaria</option>
+                        <option value="HR">Croatia</option>
+                        <option value="SI">Slovenia</option>
+                        <option value="SK">Slovakia</option>
+                        <option value="LT">Lithuania</option>
+                        <option value="LV">Latvia</option>
+                        <option value="EE">Estonia</option>
+                        <option value="KR">South Korea</option>
+                        <option value="SG">Singapore</option>
+                        <option value="HK">Hong Kong</option>
+                        <option value="TW">Taiwan</option>
+                        <option value="TH">Thailand</option>
+                        <option value="MY">Malaysia</option>
+                        <option value="ID">Indonesia</option>
+                        <option value="PH">Philippines</option>
+                        <option value="VN">Vietnam</option>
+                        <option value="IL">Israel</option>
+                        <option value="AE">United Arab Emirates</option>
+                        <option value="SA">Saudi Arabia</option>
+                        <option value="TR">Turkey</option>
+                        <option value="UA">Ukraine</option>
+                        <option value="BY">Belarus</option>
+                        <option value="KZ">Kazakhstan</option>
+                        <option value="UZ">Uzbekistan</option>
+                        <option value="NZ">New Zealand</option>
+                    </select>
                 </div>
             </div>
             
@@ -231,6 +281,11 @@
         
         document.addEventListener('webflowField:googlePlacesSetup', function(e) {
             console.log('Google Places setup complete:', e.detail);
+        });
+        
+        // Monitor country dropdown changes
+        document.getElementById('country').addEventListener('change', function(e) {
+            console.log('Country dropdown changed to:', e.target.value, e.target.options[e.target.selectedIndex].text);
         });
     </script>
 </body>

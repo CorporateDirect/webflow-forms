@@ -2056,6 +2056,12 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         setupGooglePlaces: function(field) {
             console.log('Setting up Google Places for field:', field.id || field.name);
             
+            // Skip Google Places autocomplete for SELECT fields (they get populated but don't need autocomplete)
+            if (field.tagName === 'SELECT') {
+                console.log('Skipping Google Places autocomplete for SELECT field - will be populated when address is selected');
+                return;
+            }
+            
             // Check if Google Places API is loaded
             if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
                 console.warn('Google Places API not loaded. Please include: <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>');
@@ -2400,31 +2406,82 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         populateSelectField: function(selectField, value, addressMap) {
             console.log(`Populating select field: ${selectField.name || selectField.id} with value: ${value}`);
             
-            // For country fields with our country code data
-            if (selectField.dataset.countryCode === 'true') {
+            // For country fields (both legacy data-country-code and new data-address-component)
+            if (selectField.dataset.countryCode === 'true' || 
+                selectField.dataset.addressComponent?.includes('country')) {
+                
                 const countryCode = addressMap['country']?.short_name;
                 const countryName = addressMap['country']?.long_name;
                 
+                console.log(`  Country data: ${countryCode} / ${countryName}`);
+                console.log(`  Use full name: ${selectField.dataset.useFullName}`);
+                
                 if (countryCode || countryName) {
+                    // Determine which value to use based on data-use-full-name
+                    const searchValue = selectField.dataset.useFullName === 'true' ? countryName : countryCode;
+                    const fallbackValue = selectField.dataset.useFullName === 'true' ? countryCode : countryName;
+                    
+                    console.log(`  Searching for: ${searchValue} (fallback: ${fallbackValue})`);
+                    
                     // Find option by country code or name
                     const options = selectField.querySelectorAll('option');
                     let optionFound = false;
                     
                     for (const option of options) {
-                        if (option.dataset.countryName === countryCode || 
-                            option.value === countryCode ||
-                            option.value === countryName ||
-                            option.textContent.includes(countryCode) ||
-                            option.textContent.includes(countryName)) {
+                        const optionValue = option.value.trim();
+                        const optionText = option.textContent.trim();
+                        
+                        // Try exact matches first
+                        if (optionValue === searchValue || optionText === searchValue ||
+                            optionValue === fallbackValue || optionText === fallbackValue ||
+                            optionValue === countryCode || optionText === countryCode ||
+                            optionValue === countryName || optionText === countryName) {
+                            
                             selectField.value = option.value;
                             optionFound = true;
-                            console.log(`  Country option found: ${option.textContent}`);
+                            console.log(`  Country option found (exact): ${option.textContent} (value: ${option.value})`);
+                            
+                            // Mark as auto-populated and add visual feedback
+                            selectField.dataset.autoPopulated = 'true';
+                            selectField.classList.add('wf-auto-populated');
+                            selectField.classList.remove('wf-manual-edit');
+                            
+                            // Trigger change event
+                            const changeEvent = new Event('change', { bubbles: true });
+                            selectField.dispatchEvent(changeEvent);
                             break;
+                        }
+                    }
+                    
+                    // If no exact match, try partial matches
+                    if (!optionFound) {
+                        for (const option of options) {
+                            const optionValue = option.value.toLowerCase();
+                            const optionText = option.textContent.toLowerCase();
+                            
+                            if ((countryCode && (optionValue.includes(countryCode.toLowerCase()) || optionText.includes(countryCode.toLowerCase()))) ||
+                                (countryName && (optionValue.includes(countryName.toLowerCase()) || optionText.includes(countryName.toLowerCase())))) {
+                                
+                                selectField.value = option.value;
+                                optionFound = true;
+                                console.log(`  Country option found (partial): ${option.textContent} (value: ${option.value})`);
+                                
+                                // Mark as auto-populated and add visual feedback
+                                selectField.dataset.autoPopulated = 'true';
+                                selectField.classList.add('wf-auto-populated');
+                                selectField.classList.remove('wf-manual-edit');
+                                
+                                // Trigger change event
+                                const changeEvent = new Event('change', { bubbles: true });
+                                selectField.dispatchEvent(changeEvent);
+                                break;
+                            }
                         }
                     }
                     
                     if (!optionFound) {
                         console.log(`  Country option not found for: ${countryCode} / ${countryName}`);
+                        console.log(`  Available options:`, Array.from(options).map(opt => `${opt.textContent} (${opt.value})`));
                     }
                 }
                 return;
@@ -2509,33 +2566,63 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         setupManualEditTracking: function(field) {
             let hasUserInput = false;
             
-            // Track when user starts typing (not auto-populated)
-            field.addEventListener('input', (e) => {
-                // Only mark as manual edit if it's not from auto-population
-                if (!field.dataset.autoPopulated || field.dataset.autoPopulated !== 'true') {
-                    hasUserInput = true;
-                    field.dataset.manualEdit = 'true';
-                    field.classList.add('wf-manual-edit');
-                    field.classList.remove('wf-auto-populated');
+            // For SELECT fields, track change events instead of input
+            if (field.tagName === 'SELECT') {
+                field.addEventListener('change', (e) => {
+                    // Only mark as manual edit if it's not from auto-population
+                    if (!field.dataset.autoPopulated || field.dataset.autoPopulated !== 'true') {
+                        hasUserInput = true;
+                        field.dataset.manualEdit = 'true';
+                        field.classList.add('wf-manual-edit');
+                        field.classList.remove('wf-auto-populated');
+                        
+                        // Add visual feedback for manual edit
+                        field.style.backgroundColor = '#f1f8e9';
+                        field.style.borderColor = '#4caf50';
+                        
+                        // Remove visual feedback after a delay
+                        setTimeout(() => {
+                            field.style.backgroundColor = '';
+                            field.style.borderColor = '';
+                        }, 1500);
+                        
+                        console.log(`Select field ${field.name || field.id} marked as manually edited`);
+                    }
                     
-                    // Add visual feedback for manual edit
-                    field.style.backgroundColor = '#f1f8e9';
-                    field.style.borderColor = '#4caf50';
+                    // Reset auto-populated flag after manual change
+                    if (field.dataset.autoPopulated === 'true') {
+                        delete field.dataset.autoPopulated;
+                    }
+                });
+            } else {
+                // For INPUT fields, track input events
+                field.addEventListener('input', (e) => {
+                    // Only mark as manual edit if it's not from auto-population
+                    if (!field.dataset.autoPopulated || field.dataset.autoPopulated !== 'true') {
+                        hasUserInput = true;
+                        field.dataset.manualEdit = 'true';
+                        field.classList.add('wf-manual-edit');
+                        field.classList.remove('wf-auto-populated');
+                        
+                        // Add visual feedback for manual edit
+                        field.style.backgroundColor = '#f1f8e9';
+                        field.style.borderColor = '#4caf50';
+                        
+                        // Remove visual feedback after a delay
+                        setTimeout(() => {
+                            field.style.backgroundColor = '';
+                            field.style.borderColor = '';
+                        }, 1500);
+                        
+                        console.log(`Field ${field.name || field.id} marked as manually edited`);
+                    }
                     
-                    // Remove visual feedback after a delay
-                    setTimeout(() => {
-                        field.style.backgroundColor = '';
-                        field.style.borderColor = '';
-                    }, 1500);
-                    
-                    console.log(`Field ${field.name || field.id} marked as manually edited`);
-                }
-                
-                // Reset auto-populated flag after input
-                if (field.dataset.autoPopulated === 'true') {
-                    delete field.dataset.autoPopulated;
-                }
-            });
+                    // Reset auto-populated flag after input
+                    if (field.dataset.autoPopulated === 'true') {
+                        delete field.dataset.autoPopulated;
+                    }
+                });
+            }
             
             // Track focus to detect user interaction
             field.addEventListener('focus', () => {
