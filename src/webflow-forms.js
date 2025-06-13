@@ -2579,57 +2579,95 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.log(`  Use full name: ${selectField.dataset.useFullName}`);
                 
                 if (countryCode || countryName) {
-                    // Determine which value to use based on data-use-full-name
-                    const searchValue = selectField.dataset.useFullName === 'true' ? countryName : countryCode;
-                    const fallbackValue = selectField.dataset.useFullName === 'true' ? countryCode : countryName;
+                    // Check if this is a custom searchable country dropdown
+                    const container = selectField.closest('[data-country-select-container]');
+                    const searchInput = container ? container.querySelector('[data-country-search]') : null;
+                    const hiddenSelect = container ? container.querySelector('select[style*="display: none"]') : null;
+                    const dropdownList = container ? container.querySelector('[data-country-dropdown]') : null;
                     
-                    console.log(`  Searching for: ${searchValue} (fallback: ${fallbackValue})`);
-                    
-                    // Find option by country code or name
-                    const options = selectField.querySelectorAll('option');
-                    let optionFound = false;
-                    
-                    // Debug: log all available options
-                    console.log(`  Available options:`, Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")"`));
-                    
-                    for (const option of options) {
-                        const optionValue = option.value.trim();
-                        const optionText = option.textContent.trim();
+                    if (searchInput && hiddenSelect && dropdownList) {
+                        console.log(`  Detected custom searchable country dropdown`);
                         
-                        // Try exact matches first
-                        if (optionValue === searchValue || optionText === searchValue ||
-                            optionValue === fallbackValue || optionText === fallbackValue ||
-                            optionValue === countryCode || optionText === countryCode ||
-                            optionValue === countryName || optionText === countryName) {
+                        // Determine which value to use based on data-use-full-name
+                        const searchValue = selectField.dataset.useFullName === 'true' ? countryName : countryCode;
+                        const fallbackValue = selectField.dataset.useFullName === 'true' ? countryCode : countryName;
+                        
+                        console.log(`  Searching for: ${searchValue} (fallback: ${fallbackValue})`);
+                        
+                        // Look for options in the custom dropdown
+                        const customOptions = dropdownList.querySelectorAll('[data-country-option]');
+                        console.log(`  Found ${customOptions.length} custom country options`);
+                        
+                        let optionFound = false;
+                        
+                        for (const option of customOptions) {
+                            const optionValue = option.dataset.value;
+                            const optionText = option.textContent.trim();
+                            const optionCountryCode = option.dataset.countryCode;
+                            const optionCountryName = option.dataset.countryName;
                             
-                            selectField.value = option.value;
-                            optionFound = true;
-                            console.log(`  Country option found (exact): ${option.textContent} (value: ${option.value})`);
-                            
-                            // Mark as auto-populated and add visual feedback
-                            selectField.dataset.autoPopulated = 'true';
-                            selectField.classList.add('wf-auto-populated');
-                            selectField.classList.remove('wf-manual-edit');
-                            
-                            // Trigger change event
-                            const changeEvent = new Event('change', { bubbles: true });
-                            selectField.dispatchEvent(changeEvent);
-                            break;
+                            // Try exact matches first
+                            if (optionValue === searchValue || optionText === searchValue ||
+                                optionValue === fallbackValue || optionText === fallbackValue ||
+                                optionCountryCode === countryCode || optionCountryName === countryName) {
+                                
+                                // Set the search input display value
+                                searchInput.value = optionText;
+                                // Set the hidden select value for form submission
+                                hiddenSelect.value = optionValue;
+                                
+                                optionFound = true;
+                                console.log(`  Country option found: ${optionText} (value: ${optionValue})`);
+                                
+                                // Mark as auto-populated
+                                searchInput.dataset.autoPopulated = 'true';
+                                searchInput.classList.add('wf-auto-populated');
+                                hiddenSelect.dataset.autoPopulated = 'true';
+                                
+                                // Trigger change event on hidden select
+                                const changeEvent = new Event('change', { bubbles: true });
+                                hiddenSelect.dispatchEvent(changeEvent);
+                                break;
+                            }
                         }
-                    }
-                    
-                    // If no exact match, try partial matches
-                    if (!optionFound) {
+                        
+                        if (!optionFound) {
+                            console.log(`  Country option not found for: ${countryCode} / ${countryName}`);
+                            // For debugging, show what options are available
+                            console.log(`  Available custom options:`, Array.from(customOptions).slice(0, 5).map(opt => 
+                                `"${opt.textContent.trim()}" (value: "${opt.dataset.value}", code: "${opt.dataset.countryCode}")`
+                            ));
+                        }
+                    } else {
+                        // Handle standard select field
+                        console.log(`  Standard select field detected`);
+                        
+                        // Determine which value to use based on data-use-full-name
+                        const searchValue = selectField.dataset.useFullName === 'true' ? countryName : countryCode;
+                        const fallbackValue = selectField.dataset.useFullName === 'true' ? countryCode : countryName;
+                        
+                        console.log(`  Searching for: ${searchValue} (fallback: ${fallbackValue})`);
+                        
+                        // Find option by country code or name
+                        const options = selectField.querySelectorAll('option');
+                        let optionFound = false;
+                        
+                        // Debug: log all available options
+                        console.log(`  Available options:`, Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")"`));
+                        
                         for (const option of options) {
-                            const optionValue = option.value.toLowerCase();
-                            const optionText = option.textContent.toLowerCase();
+                            const optionValue = option.value.trim();
+                            const optionText = option.textContent.trim();
                             
-                            if ((countryCode && (optionValue.includes(countryCode.toLowerCase()) || optionText.includes(countryCode.toLowerCase()))) ||
-                                (countryName && (optionValue.includes(countryName.toLowerCase()) || optionText.includes(countryName.toLowerCase())))) {
+                            // Try exact matches first
+                            if (optionValue === searchValue || optionText === searchValue ||
+                                optionValue === fallbackValue || optionText === fallbackValue ||
+                                optionValue === countryCode || optionText === countryCode ||
+                                optionValue === countryName || optionText === countryName) {
                                 
                                 selectField.value = option.value;
                                 optionFound = true;
-                                console.log(`  Country option found (partial): ${option.textContent} (value: ${option.value})`);
+                                console.log(`  Country option found (exact): ${option.textContent} (value: ${option.value})`);
                                 
                                 // Mark as auto-populated and add visual feedback
                                 selectField.dataset.autoPopulated = 'true';
@@ -2642,11 +2680,36 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                                 break;
                             }
                         }
-                    }
-                    
-                    if (!optionFound) {
-                        console.log(`  Country option not found for: ${countryCode} / ${countryName}`);
-                        console.log(`  Available options:`, Array.from(options).map(opt => `${opt.textContent} (${opt.value})`));
+                        
+                        // If no exact match, try partial matches
+                        if (!optionFound) {
+                            for (const option of options) {
+                                const optionValue = option.value.toLowerCase();
+                                const optionText = option.textContent.toLowerCase();
+                                
+                                if ((countryCode && (optionValue.includes(countryCode.toLowerCase()) || optionText.includes(countryCode.toLowerCase()))) ||
+                                    (countryName && (optionValue.includes(countryName.toLowerCase()) || optionText.includes(countryName.toLowerCase())))) {
+                                    
+                                    selectField.value = option.value;
+                                    optionFound = true;
+                                    console.log(`  Country option found (partial): ${option.textContent} (value: ${option.value})`);
+                                    
+                                    // Mark as auto-populated and add visual feedback
+                                    selectField.dataset.autoPopulated = 'true';
+                                    selectField.classList.add('wf-auto-populated');
+                                    selectField.classList.remove('wf-manual-edit');
+                                    
+                                    // Trigger change event
+                                    const changeEvent = new Event('change', { bubbles: true });
+                                    selectField.dispatchEvent(changeEvent);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!optionFound) {
+                            console.log(`  Country option not found for: ${countryCode} / ${countryName}`);
+                        }
                     }
                 }
                 return;
