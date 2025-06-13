@@ -2955,22 +2955,48 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Find phone country dropdowns using data-country-code="true"
             const phoneCountryDropdowns = document.querySelectorAll('[data-country-code="true"]');
+            console.log(`📞 Found ${phoneCountryDropdowns.length} phone country dropdowns with data-country-code="true"`);
             
-            phoneCountryDropdowns.forEach(dropdown => {
-                console.log(`📞 Found phone country dropdown: ${dropdown.name || dropdown.id}`);
+            if (phoneCountryDropdowns.length === 0) {
+                console.log(`⚠️ No phone country dropdowns found. Checking all dropdowns...`);
+                
+                // Debug: Show all form selects to help identify the issue
+                const allSelects = document.querySelectorAll('select');
+                console.log(`📋 Found ${allSelects.length} total select elements:`);
+                allSelects.forEach((select, index) => {
+                    console.log(`  ${index + 1}. Select name="${select.name}" id="${select.id}" data-country-code="${select.dataset.countryCode}"`);
+                });
+                
+                // Also check for inputs that might be phone country fields
+                const inputs = document.querySelectorAll('input[data-country-code]');
+                console.log(`📋 Found ${inputs.length} input elements with data-country-code:`);
+                inputs.forEach((input, index) => {
+                    console.log(`  ${index + 1}. Input name="${input.name}" id="${input.id}" data-country-code="${input.dataset.countryCode}"`);
+                });
+                
+                return;
+            }
+            
+            phoneCountryDropdowns.forEach((dropdown, index) => {
+                console.log(`📞 Processing dropdown ${index + 1}: ${dropdown.name || dropdown.id}`);
+                console.log(`📞 Dropdown tag: ${dropdown.tagName}, type: ${dropdown.type}`);
                 
                 // Check if it's a searchable dropdown in a container
                 const container = dropdown.closest('[data-country-select-container]');
                 if (container) {
-                    console.log(`📞 Searchable dropdown detected`);
+                    console.log(`📞 Searchable dropdown detected in container`);
                     const searchInput = container.querySelector('[data-country-search]');
                     const hiddenSelect = container.querySelector('select[style*="display: none"]');
                     
+                    console.log(`📞 Container elements - searchInput: ${!!searchInput}, hiddenSelect: ${!!hiddenSelect}`);
+                    
                     if (searchInput && hiddenSelect) {
                         this.syncSearchableCountryDropdown(searchInput, hiddenSelect, countryName, countryCode);
+                    } else {
+                        console.log(`⚠️ Missing searchable dropdown elements`);
                     }
                 } else {
-                    console.log(`📞 Standard dropdown detected`);
+                    console.log(`📞 Standard dropdown detected (no container)`);
                     this.syncStandardCountryDropdown(dropdown, countryName, countryCode);
                 }
             });
@@ -2981,6 +3007,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const options = hiddenSelect.querySelectorAll('option');
             console.log(`📞 Searching ${options.length} options for: ${countryName} or ${countryCode}`);
             
+            // Debug: Show first few options
+            console.log(`📞 First 5 options:`, Array.from(options).slice(0, 5).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
+            
+            let matchFound = false;
             for (const option of options) {
                 const text = option.textContent.toLowerCase();
                 const value = option.value.toLowerCase();
@@ -2994,13 +3024,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     searchInput.value = option.textContent;
                     hiddenSelect.value = option.value;
                     
-                    console.log(`✅ Phone country synced to: ${option.textContent}`);
+                    console.log(`✅ Phone country synced to: ${option.textContent} (value: ${option.value})`);
                     
                     // Trigger change event
                     const changeEvent = new Event('change', { bubbles: true });
                     hiddenSelect.dispatchEvent(changeEvent);
+                    matchFound = true;
                     break;
                 }
+            }
+            
+            if (!matchFound) {
+                console.log(`⚠️ No matching option found for ${countryName} (${countryCode})`);
+                console.log(`📞 All options:`, Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
             }
         },
 
@@ -3009,6 +3045,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const options = dropdown.querySelectorAll('option');
             console.log(`📞 Searching ${options.length} options for: ${countryName} or ${countryCode}`);
             
+            // Debug: Show first few options
+            console.log(`📞 First 5 options:`, Array.from(options).slice(0, 5).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
+            
+            let matchFound = false;
             for (const option of options) {
                 const text = option.textContent.toLowerCase();
                 const value = option.value.toLowerCase();
@@ -3021,13 +3061,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     
                     dropdown.value = option.value;
                     
-                    console.log(`✅ Phone country synced to: ${option.textContent}`);
+                    console.log(`✅ Phone country synced to: ${option.textContent} (value: ${option.value})`);
                     
                     // Trigger change event
                     const changeEvent = new Event('change', { bubbles: true });
                     dropdown.dispatchEvent(changeEvent);
+                    matchFound = true;
                     break;
                 }
+            }
+            
+            if (!matchFound) {
+                console.log(`⚠️ No matching option found for ${countryName} (${countryCode})`);
+                console.log(`📞 All options:`, Array.from(options).map(opt => `"${opt.textContent}" (value: "${opt.value}")`));
             }
         }
     };
