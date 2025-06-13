@@ -1546,7 +1546,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const form = phoneField.closest('form');
             if (!form) return null;
             
-            // Look for country code selectors in the same form
+            // First, check if there's a specific reference in the phone field's data attribute
+            const countryFieldRef = phoneField.dataset.phoneCountryField;
+            if (countryFieldRef) {
+                return form.querySelector(countryFieldRef);
+            }
+            
+            // Look for country code selectors in the same form using data attributes only
             // First check for searchable country selects
             let countrySelector = form.querySelector('[data-country-search="true"]');
             if (countrySelector) return countrySelector;
@@ -1555,45 +1561,47 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             countrySelector = form.querySelector('select[data-country-code="true"]');
             if (countrySelector) return countrySelector;
             
-            // Check by data attribute reference
-            const countryFieldRef = phoneField.dataset.phoneCountryField;
-            if (countryFieldRef) {
-                return form.querySelector(countryFieldRef);
-            }
-            
             return null;
+        },
+
+        // Helper function to check if field names are related (for phone/country field matching)
+        areFieldNamesRelated: function(name1, name2) {
+            if (!name1 || !name2) return false;
+            
+            // Convert to lowercase for comparison
+            name1 = name1.toLowerCase();
+            name2 = name2.toLowerCase();
+            
+            // Extract base names by removing common prefixes/suffixes
+            const cleanName1 = name1.replace(/^(contact-?|user-?|customer-?)/i, '').replace(/(-?phone|-?tel|-?number)$/i, '');
+            const cleanName2 = name2.replace(/^(contact-?|user-?|customer-?)/i, '').replace(/(-?country|-?code)$/i, '');
+            
+            // Check if they share a common base (e.g., "Contact-Phone" and "Contact-Country-Code" both have "Contact")
+            return cleanName1 === cleanName2 || 
+                   name1.includes(cleanName2) || 
+                   name2.includes(cleanName1);
         },
 
         // Update phone field formatting based on selected country
         updatePhoneFormat: function(phoneField, countrySelector) {
             let selectedDialingCode = '';
             
-            console.log('updatePhoneFormat called');
-            console.log('countrySelector:', countrySelector);
-            console.log('countrySelector.tagName:', countrySelector.tagName);
-            
             // Get selected country dialing code
             if (countrySelector.tagName === 'SELECT') {
                 const selectedOption = countrySelector.options[countrySelector.selectedIndex];
                 selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
-                console.log('Standard select - selectedOption:', selectedOption);
-                console.log('Standard select - selectedDialingCode:', selectedDialingCode);
             } else if (countrySelector.dataset.countrySearch === 'true') {
                 // For searchable selects, first try hidden select
                 const hiddenSelect = countrySelector.parentNode.querySelector('select[style*="display: none"]');
-                console.log('Searchable select - hiddenSelect:', hiddenSelect);
                 if (hiddenSelect && hiddenSelect.selectedIndex > 0) {
                     const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
                     selectedDialingCode = selectedOption ? selectedOption.dataset.countryCode : '';
-                    console.log('Searchable select - selectedOption:', selectedOption);
-                    console.log('Searchable select - selectedDialingCode:', selectedDialingCode);
                 } else {
                     // If no selection in hidden select, check if user typed a country code directly
                     const searchInputValue = countrySelector.value.trim();
                     const isCountryCodePattern = /^(\+?\d{1,4})$/.test(searchInputValue);
                     if (isCountryCodePattern) {
                         selectedDialingCode = searchInputValue.startsWith('+') ? searchInputValue : '+' + searchInputValue;
-                        console.log('Typed country code detected:', selectedDialingCode);
                     }
                 }
             }
