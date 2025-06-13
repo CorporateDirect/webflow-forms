@@ -191,6 +191,32 @@
                  <small>🏛️ Auto-populated from address, but you can type directly</small>
              </div>
 
+            <!-- Phone Number Section -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="phone-country">Phone Country *</label>
+                    <select id="phone-country" 
+                            name="phone-country" 
+                            data-country-code="true"
+                            required>
+                        <option value="">Select Country</option>
+                    </select>
+                    <small>🌍 Auto-updates when address country is selected</small>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" 
+                           id="phone" 
+                           name="phone" 
+                           data-phone-format=""
+                           data-phone-type="mobile"
+                           data-phone-country-field="[data-country-code='true']"
+                           required
+                           placeholder="Phone number">
+                    <small>📱 Format updates based on selected country</small>
+                </div>
+            </div>
+
             <button type="submit" class="submit-btn">
                 Submit Form
             </button>
@@ -270,7 +296,86 @@
                         }, 300);
                     });
                 }, 100);
+                
+                // Auto-update phone country dropdown when address country is populated
+                setTimeout(() => {
+                    updatePhoneCountryFromAddress();
+                }, 200);
             });
+            
+            // Function to sync phone country dropdown with address country field
+            function updatePhoneCountryFromAddress() {
+                const addressCountryField = document.querySelector('[data-address-component="country"]');
+                const phoneCountryDropdown = document.querySelector('[data-country-code="true"]');
+                
+                if (addressCountryField && phoneCountryDropdown && addressCountryField.value) {
+                    const countryName = addressCountryField.value.trim();
+                    console.log('🔄 Syncing phone country dropdown with address country:', countryName);
+                    
+                    // Wait for the country dropdown to be fully populated by the library
+                    setTimeout(() => {
+                        // Check if this is a searchable country dropdown (with hidden select)
+                        const container = phoneCountryDropdown.closest('[data-country-select-container]');
+                        const isSearchableDropdown = container && phoneCountryDropdown.dataset.countrySearch === 'true';
+                        
+                        if (isSearchableDropdown) {
+                            // Handle searchable country dropdown
+                            const hiddenSelect = container.querySelector('select[style*="display: none"]');
+                            if (hiddenSelect) {
+                                updateCountryDropdown(hiddenSelect, countryName, 'searchable dropdown');
+                                // Also update the visible search input
+                                phoneCountryDropdown.value = countryName;
+                            }
+                        } else {
+                            // Handle standard select dropdown
+                            updateCountryDropdown(phoneCountryDropdown, countryName, 'standard dropdown');
+                        }
+                    }, 750); // Longer delay to ensure dropdown is populated
+                }
+            }
+            
+            function updateCountryDropdown(selectElement, countryName, dropdownType) {
+                const options = selectElement.querySelectorAll('option');
+                let matchFound = false;
+                
+                console.log(`🔍 Searching ${dropdownType} with ${options.length} options for: "${countryName}"`);
+                
+                // Try exact matches first
+                for (const option of options) {
+                    const optionText = option.textContent.toLowerCase().trim();
+                    const optionValue = option.value.toLowerCase().trim();
+                    
+                    if (optionText.includes(countryName.toLowerCase()) || 
+                        optionValue.includes(countryName.toLowerCase()) ||
+                        countryName.toLowerCase().includes(optionText)) {
+                        
+                        selectElement.value = option.value;
+                        matchFound = true;
+                        console.log(`✅ Phone country updated to: "${option.textContent}" (${dropdownType})`);
+                        
+                        // Trigger change event to update phone formatting
+                        const changeEvent = new Event('change', { bubbles: true });
+                        selectElement.dispatchEvent(changeEvent);
+                        
+                        // Trigger custom event for the library
+                        const customEvent = new CustomEvent('webflowField:countrySelected', {
+                            bubbles: true,
+                            detail: {
+                                value: option.value,
+                                name: option.textContent,
+                                field: selectElement
+                            }
+                        });
+                        selectElement.dispatchEvent(customEvent);
+                        break;
+                    }
+                }
+                
+                if (!matchFound) {
+                    console.log(`⚠️ No matching phone country found in ${dropdownType} for: "${countryName}"`);
+                    console.log('Available options:', Array.from(options).slice(0, 5).map(opt => opt.textContent));
+                }
+            }
             
             // Form submission handling
             document.querySelector('form').addEventListener('submit', function(e) {
