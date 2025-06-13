@@ -2622,6 +2622,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         console.log(`  Found ${customOptions.length} custom country options`);
                         
                         let optionFound = false;
+                        let debugCount = 0;
                         
                         for (const option of customOptions) {
                             const optionValue = option.dataset.value;
@@ -2629,10 +2630,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                             const optionCountryCode = option.dataset.countryCode;
                             const optionCountryName = option.dataset.countryName;
                             
-                            // Try exact matches first
-                            if (optionValue === searchValue || optionText === searchValue ||
-                                optionValue === fallbackValue || optionText === fallbackValue ||
-                                optionCountryCode === countryCode || optionCountryName === countryName) {
+                            // Only show first few options for debugging
+                            if (debugCount < 3) {
+                                console.log(`  Checking option: "${optionText}" (value: "${optionValue}", code: "${optionCountryCode}", name: "${optionCountryName}")`);
+                                debugCount++;
+                            }
+                            
+                            // Try exact matches first - prioritize country data attributes over display text
+                            if (optionCountryCode === countryCode || 
+                                optionCountryName === countryName ||
+                                optionCountryCode === countryName || 
+                                optionCountryName === countryCode ||
+                                optionValue === searchValue || 
+                                optionValue === fallbackValue) {
                                 
                                 // Set the search input display value
                                 searchInput.value = optionText;
