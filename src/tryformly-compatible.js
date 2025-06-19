@@ -719,10 +719,18 @@
             step.style.position = 'static';
             step.style.left = 'auto';
             
-            step.classList.remove('step-hidden');
-            step.classList.remove('immediately-hidden');
-            step.classList.remove('class-hidden');
+            // Remove ALL hiding classes
+            step.classList.remove('step-hidden', 'immediately-hidden', 'class-hidden');
             step.classList.add('step-visible', 'step-enter');
+            
+            // Force remove any remaining hiding classes
+            const hidingClasses = ['step-hidden', 'immediately-hidden', 'class-hidden'];
+            hidingClasses.forEach(cls => {
+                if (step.classList.contains(cls)) {
+                    step.classList.remove(cls);
+                    console.log(`🔧 SHOW STEP: Force removed class: ${cls}`);
+                }
+            });
             
             console.log(`🔍 SHOW STEP: Classes after show:`, step.className);
             console.log(`🔍 SHOW STEP: Inline styles after:`, {
@@ -1055,7 +1063,12 @@
                 }
                 
                 /* Hide steps by default - AGGRESSIVE */
-                [data-form="step"], [data-step], [data-step-number], [data-form-step], .form-step, .step {
+                [data-form="step"]:not(.step-visible), 
+                [data-step]:not(.step-visible), 
+                [data-step-number]:not(.step-visible), 
+                [data-form-step]:not(.step-visible), 
+                .form-step:not(.step-visible), 
+                .step:not(.step-visible) {
                     display: none !important;
                     visibility: hidden !important;
                     opacity: 0 !important;
@@ -1076,7 +1089,21 @@
                     opacity: 1 !important;
                     position: static !important;
                     left: auto !important;
-                    transform: translateX(0);
+                    transform: translateX(0) !important;
+                }
+                
+                /* Ensure visible steps override all hiding classes */
+                [data-form="step"].step-visible,
+                [data-step].step-visible,
+                [data-step-number].step-visible,
+                [data-form-step].step-visible,
+                .form-step.step-visible,
+                .step.step-visible {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    position: static !important;
+                    left: auto !important;
                 }
                 
                 .step-enter {
