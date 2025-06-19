@@ -36,6 +36,8 @@
         }
         
         hideAllStepsImmediately() {
+            console.log('🔍 CLASS HIDING: Starting hideAllStepsImmediately, DOM state:', document.readyState);
+            
             // Find and hide all potential steps immediately, before form initialization
             const stepSelectors = [
                 '[data-form="step"]',
@@ -46,16 +48,33 @@
                 '.step'
             ];
             
+            let totalFound = 0;
+            
             stepSelectors.forEach(selector => {
                 const steps = document.querySelectorAll(selector);
-                steps.forEach(step => {
+                console.log(`🔍 CLASS: Selector "${selector}" found ${steps.length} elements`);
+                
+                steps.forEach((step, index) => {
+                    console.log(`🔍 CLASS: Processing step ${index + 1}:`, step);
+                    console.log(`🔍 CLASS: Current computed styles:`, window.getComputedStyle(step).display);
+                    
                     step.style.display = 'none';
                     step.style.visibility = 'hidden';
                     step.classList.add('step-hidden');
+                    step.classList.add('class-hidden');
+                    
+                    console.log(`🔍 CLASS: After hiding - inline display:`, step.style.display);
+                    console.log(`🔍 CLASS: After hiding - computed display:`, window.getComputedStyle(step).display);
+                    
+                    totalFound++;
                 });
             });
             
-            console.log('🔒 Pre-hidden all potential steps');
+            console.log(`🔒 CLASS HIDING: Pre-hidden ${totalFound} potential steps`);
+            
+            if (totalFound === 0) {
+                console.warn('⚠️ CLASS HIDING: No steps found during class initialization!');
+            }
         }
         
         initializeForms() {
@@ -160,22 +179,41 @@
         }
         
         initializeFormState(formId) {
+            console.log(`🔍 FORM INIT: Starting initializeFormState for ${formId}`);
+            
             const formData = this.forms.get(formId);
-            if (!formData) return;
+            if (!formData) {
+                console.warn(`⚠️ FORM INIT: No form data found for ${formId}`);
+                return;
+            }
+            
+            console.log(`🔍 FORM INIT: Form has ${formData.steps.length} steps`);
             
             // Hide all steps immediately, then show first
             formData.steps.forEach((step, index) => {
+                console.log(`🔍 FORM INIT: Hiding step ${index + 1}:`, step);
+                console.log(`🔍 FORM INIT: Step ${index + 1} classes before hide:`, step.className);
+                console.log(`🔍 FORM INIT: Step ${index + 1} computed display before:`, window.getComputedStyle(step).display);
+                
                 this.hideStep(step);  // Hide all first
+                
+                console.log(`🔍 FORM INIT: Step ${index + 1} classes after hide:`, step.className);
+                console.log(`🔍 FORM INIT: Step ${index + 1} computed display after:`, window.getComputedStyle(step).display);
             });
             
             // Show first step
             if (formData.steps.length > 0) {
+                console.log(`🔍 FORM INIT: Showing first step:`, formData.steps[0]);
                 this.showStep(formData.steps[0]);
+                console.log(`🔍 FORM INIT: First step classes after show:`, formData.steps[0].className);
+                console.log(`🔍 FORM INIT: First step computed display after show:`, window.getComputedStyle(formData.steps[0]).display);
             }
             
             this.updateProgress(formId);
             this.updateNavigation(formId);
             this.processConditionalLogic(formId);
+            
+            console.log(`✅ FORM INIT: Completed initialization for ${formId}`);
         }
         
         setupEventListeners() {
@@ -602,9 +640,28 @@
         
         // Step visibility
         showStep(step) {
+            console.log(`🔍 SHOW STEP: Showing step:`, step);
+            console.log(`🔍 SHOW STEP: Classes before show:`, step.className);
+            console.log(`🔍 SHOW STEP: Computed display before:`, window.getComputedStyle(step).display);
+            
             step.style.display = 'block';
+            step.style.visibility = 'visible';
+            step.style.opacity = '1';
+            step.style.position = 'static';
+            step.style.left = 'auto';
+            
             step.classList.remove('step-hidden');
+            step.classList.remove('immediately-hidden');
+            step.classList.remove('class-hidden');
             step.classList.add('step-visible', 'step-enter');
+            
+            console.log(`🔍 SHOW STEP: Classes after show:`, step.className);
+            console.log(`🔍 SHOW STEP: Inline styles after:`, {
+                display: step.style.display,
+                visibility: step.style.visibility,
+                opacity: step.style.opacity
+            });
+            console.log(`🔍 SHOW STEP: Computed display after:`, window.getComputedStyle(step).display);
             
             // Handle step-wrappers with data-answer attributes (tryformly branching logic)
             this.showStepWrappers(step);
@@ -616,12 +673,32 @@
                     firstInput.focus();
                 }
             }, this.config.transitionDuration);
+            
+            console.log(`✅ SHOW STEP: Step should now be visible`);
         }
         
         hideStep(step) {
+            console.log(`🔍 HIDE STEP: Hiding step:`, step);
+            console.log(`🔍 HIDE STEP: Classes before hide:`, step.className);
+            console.log(`🔍 HIDE STEP: Computed display before:`, window.getComputedStyle(step).display);
+            
             step.style.display = 'none';  // Hide immediately
+            step.style.visibility = 'hidden';
+            step.style.opacity = '0';
+            step.style.position = 'absolute';
+            step.style.left = '-9999px';
+            
             step.classList.remove('step-visible', 'step-enter');
             step.classList.add('step-hidden');
+            
+            console.log(`🔍 HIDE STEP: Classes after hide:`, step.className);
+            console.log(`🔍 HIDE STEP: Inline styles after:`, {
+                display: step.style.display,
+                visibility: step.style.visibility,
+                opacity: step.style.opacity
+            });
+            console.log(`🔍 HIDE STEP: Computed display after:`, window.getComputedStyle(step).display);
+            console.log(`✅ HIDE STEP: Step should now be hidden`);
         }
         
         // Step-wrapper branching logic (tryformly compatibility)
@@ -1106,6 +1183,8 @@
 
     // IMMEDIATE step hiding - runs as soon as script loads
     (function hideStepsImmediately() {
+        console.log('🔍 IMMEDIATE HIDING: Script executing, DOM state:', document.readyState);
+        
         const stepSelectors = [
             '[data-form="step"]',
             '[data-step]',
@@ -1115,19 +1194,43 @@
             '.step'
         ];
         
+        let totalStepsFound = 0;
+        
         stepSelectors.forEach(selector => {
             const steps = document.querySelectorAll(selector);
-            steps.forEach(step => {
+            console.log(`🔍 IMMEDIATE: Selector "${selector}" found ${steps.length} elements`);
+            
+            steps.forEach((step, index) => {
+                console.log(`🔍 IMMEDIATE: Hiding step ${index + 1} with selector "${selector}":`, step);
+                console.log(`🔍 IMMEDIATE: Step classes before:`, step.className);
+                console.log(`🔍 IMMEDIATE: Step styles before:`, {
+                    display: step.style.display,
+                    visibility: step.style.visibility,
+                    opacity: step.style.opacity
+                });
+                
                 step.style.display = 'none';
                 step.style.visibility = 'hidden';
                 step.style.opacity = '0';
                 step.style.position = 'absolute';
                 step.style.left = '-9999px';
+                step.classList.add('immediately-hidden');
+                
+                console.log(`🔍 IMMEDIATE: Step styles after:`, {
+                    display: step.style.display,
+                    visibility: step.style.visibility,
+                    opacity: step.style.opacity
+                });
+                
+                totalStepsFound++;
             });
         });
         
-        if (stepSelectors.some(sel => document.querySelectorAll(sel).length > 0)) {
-            console.log('⚡ Immediately hid steps on script load');
+        console.log(`⚡ IMMEDIATE HIDING: Processed ${totalStepsFound} total steps`);
+        
+        if (totalStepsFound === 0) {
+            console.warn('⚠️ IMMEDIATE HIDING: No steps found! DOM might not be ready or selectors might be wrong');
+            console.log('🔍 IMMEDIATE: Available elements in DOM:', document.querySelectorAll('*').length);
         }
     })();
 
