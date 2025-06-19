@@ -3153,6 +3153,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     return;
                 }
 
+                // Auto-detect and validate branching patterns
+                const patterns = this.detectBranchingPatterns(form);
+                this.validateBranchingPatterns(patterns, form);
+
                 // Map all steps and their conditions
                 this.mapFormSteps(form);
                 
@@ -3162,7 +3166,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Initialize step visibility
                 this.initializeStepVisibility(form);
                 
-                console.log('Branching logic initialized successfully');
+                console.log('Modular branching logic initialized successfully');
+                console.log(`Detected ${patterns.members.length} member patterns, ${patterns.managers.length} manager patterns, ${patterns.other.length} other patterns`);
                 
             } catch (error) {
                 console.error('Error initializing branching logic:', error);
@@ -3473,6 +3478,84 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             return null;
         },
 
+        // Auto-detect branching patterns in the form (modular pattern recognition)
+        detectBranchingPatterns: function(form) {
+            const patterns = {
+                members: [],
+                managers: [],
+                other: []
+            };
+            
+            // Find all radio button groups with data-go-to attributes
+            const branchingGroups = form.querySelectorAll('input[type="radio"][data-go-to]');
+            const groupsByName = {};
+            
+            branchingGroups.forEach(radio => {
+                const groupName = radio.name;
+                if (!groupsByName[groupName]) {
+                    groupsByName[groupName] = [];
+                }
+                groupsByName[groupName].push(radio);
+            });
+            
+            // Categorize patterns
+            Object.entries(groupsByName).forEach(([groupName, radios]) => {
+                const pattern = {
+                    groupName: groupName,
+                    radios: radios,
+                    targets: radios.map(r => r.dataset.goTo),
+                    step: radios[0].closest('[data-form="step"]')
+                };
+                
+                if (groupName.toLowerCase().includes('member')) {
+                    patterns.members.push(pattern);
+                } else if (groupName.toLowerCase().includes('manager')) {
+                    patterns.managers.push(pattern);
+                } else {
+                    patterns.other.push(pattern);
+                }
+            });
+            
+            console.log('Detected branching patterns:', patterns);
+            return patterns;
+        },
+
+        // Validate that branching patterns have corresponding step items
+        validateBranchingPatterns: function(patterns, form) {
+            console.log('Validating branching patterns...');
+            
+            const allPatterns = [...patterns.members, ...patterns.managers, ...patterns.other];
+            let validPatterns = 0;
+            let invalidPatterns = 0;
+            
+            allPatterns.forEach(pattern => {
+                const missingTargets = [];
+                
+                pattern.targets.forEach(target => {
+                    const stepItem = form.querySelector(`[data-answer="${target}"]`);
+                    if (!stepItem) {
+                        missingTargets.push(target);
+                    }
+                });
+                
+                if (missingTargets.length === 0) {
+                    validPatterns++;
+                    console.log(`✅ Valid pattern: ${pattern.groupName} (${pattern.targets.length} options)`);
+                } else {
+                    invalidPatterns++;
+                    console.warn(`⚠️ Invalid pattern: ${pattern.groupName} - Missing step items:`, missingTargets);
+                }
+            });
+            
+            console.log(`Pattern validation complete: ${validPatterns} valid, ${invalidPatterns} invalid`);
+            
+            if (invalidPatterns > 0) {
+                console.warn('Some branching patterns are incomplete. Check your data-answer attributes on step items.');
+            }
+            
+            return { validPatterns, invalidPatterns, total: allPatterns.length };
+        },
+
         // Handle step item visibility based on selected branch
         handleStepItemVisibility: function(targetStep, direction = 'forward') {
             const stepItems = targetStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
@@ -3632,8 +3715,51 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             return {
                 currentStep: this.getCurrentStepId(),
                 stepHistory: [...this.branchingState.stepHistory],
+                branchHistory: [...this.branchingState.branchHistory],
                 totalSteps: this.branchingState.conditionalSteps.size,
-                totalBranchingRules: Array.from(this.branchingState.branchingRules.values()).flat().length
+                totalBranchingRules: Array.from(this.branchingState.branchingRules.values()).flat().length,
+                selectedBranch: this.branchingState.selectedBranch
+            };
+        },
+
+        // Helper method for developers to easily create branching patterns
+        createBranchingPattern: function(config) {
+            /*
+            Example usage:
+            WebflowFieldEnhancer.createBranchingPattern({
+                type: 'member', // or 'manager' or custom
+                number: 5, // for member-5, manager-5, etc.
+                options: ['individual', 'entity', 'trust'], // the branching options
+                container: '.radio_component' // where to insert the pattern
+            });
+            */
+            
+            console.log('Creating branching pattern:', config);
+            
+            const { type, number, options, container } = config;
+            
+            if (!type || !options || !Array.isArray(options)) {
+                console.error('Invalid branching pattern config. Required: type, options (array)');
+                return false;
+            }
+            
+            const patterns = options.map(option => ({
+                radioId: `${option}-${type}${number ? `-${number}` : ''}`,
+                radioName: `${type}${number ? `-${number}` : ''}-Type`,
+                radioValue: option.charAt(0).toUpperCase() + option.slice(1),
+                dataGoTo: `${option}${number ? `-${number}` : ''}`,
+                stepItemAnswer: `${option}${number ? `-${number}` : ''}`
+            }));
+            
+            console.log('Generated patterns:', patterns);
+            
+            return {
+                patterns: patterns,
+                instructions: {
+                    radioButtons: 'Add radio buttons with the generated radioId, radioName, radioValue, and dataGoTo',
+                    stepItems: 'Add step items with class "step_item" and data-answer matching stepItemAnswer',
+                    validation: 'Use validateBranchingPatterns() to check implementation'
+                }
             };
         },
 
