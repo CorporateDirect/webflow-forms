@@ -370,9 +370,22 @@
                 }
             }
             
-            const targetStepIndex = parseInt(targetStep) - 1; // Convert to 0-based
-            if (targetStepIndex >= 0) {
-                this.goToStep(formId, targetStepIndex);
+            // Store the go-to value for step-wrapper logic
+            const formData = this.formData.get(formId);
+            if (formData) {
+                formData.set('_lastGoTo', targetStep);
+            }
+            
+            // Handle numeric step navigation
+            if (/^\d+$/.test(targetStep)) {
+                const targetStepIndex = parseInt(targetStep) - 1; // Convert to 0-based
+                if (targetStepIndex >= 0) {
+                    this.goToStep(formId, targetStepIndex);
+                }
+            } else {
+                // Handle named step navigation (for step-wrappers)
+                // Go to next step and let showStepWrappers handle the wrapper selection
+                this.nextStep(formId);
             }
         }
         
@@ -554,6 +567,9 @@
             step.classList.remove('step-hidden');
             step.classList.add('step-visible', 'step-enter');
             
+            // Handle step-wrappers with data-answer attributes (tryformly branching logic)
+            this.showStepWrappers(step);
+            
             // Focus first input
             setTimeout(() => {
                 const firstInput = step.querySelector('input:not([type="hidden"]), select, textarea');
@@ -571,6 +587,78 @@
                 step.style.display = 'none';
                 step.classList.remove('step-exit');
             }, this.config.transitionDuration);
+        }
+        
+        // Step-wrapper branching logic (tryformly compatibility)
+        showStepWrappers(step) {
+            const formId = this.getFormId(step);
+            if (!formId) return;
+            
+            const formData = this.formData.get(formId);
+            if (!formData) return;
+            
+            // Find all step-wrappers in this step
+            const stepWrappers = step.querySelectorAll('[data-answer]');
+            
+            if (stepWrappers.length === 0) return;
+            
+            // Hide all step-wrappers initially
+            stepWrappers.forEach(wrapper => {
+                wrapper.style.display = 'none';
+                wrapper.classList.remove('wrapper-visible');
+                wrapper.classList.add('wrapper-hidden');
+            });
+            
+            // Determine which wrapper(s) to show based on previous selections
+            const activeWrapper = this.getActiveStepWrapper(step, formData);
+            
+            if (activeWrapper) {
+                activeWrapper.style.display = 'block';
+                activeWrapper.classList.remove('wrapper-hidden');
+                activeWrapper.classList.add('wrapper-visible');
+                console.log(`📋 Showing wrapper with data-answer="${activeWrapper.getAttribute('data-answer')}"`);
+            } else {
+                // Show first wrapper with empty data-answer (first step wrapper)
+                const firstWrapper = step.querySelector('[data-answer=""]');
+                if (firstWrapper) {
+                    firstWrapper.style.display = 'block';
+                    firstWrapper.classList.remove('wrapper-hidden');
+                    firstWrapper.classList.add('wrapper-visible');
+                    console.log('📋 Showing first step wrapper (data-answer="")');
+                }
+            }
+        }
+        
+        getActiveStepWrapper(step, formData) {
+            const stepWrappers = step.querySelectorAll('[data-answer]');
+            
+            // Check each wrapper's data-answer against form data
+            for (const wrapper of stepWrappers) {
+                const answerValue = wrapper.getAttribute('data-answer');
+                
+                // Skip empty answers (first step wrappers)
+                if (answerValue === '') continue;
+                
+                // Check if this answer matches any form field value
+                if (this.hasMatchingFormValue(formData, answerValue)) {
+                    return wrapper;
+                }
+            }
+            
+            return null;
+        }
+        
+        hasMatchingFormValue(formData, answerValue) {
+            // Check if any form field has this value
+            for (const [fieldName, fieldValue] of formData) {
+                if (fieldValue === answerValue) {
+                    return true;
+                }
+            }
+            
+            // Also check for direct step navigation values
+            // (when data-go-to points to a step name instead of field value)
+            return formData.has('_lastGoTo') && formData.get('_lastGoTo') === answerValue;
         }
         
         // UI updates
@@ -920,6 +1008,23 @@
                 .step-indicator.completed {
                     background: #28a745;
                     color: white;
+                }
+                
+                /* Step-wrapper branching logic */
+                [data-answer] {
+                    transition: all 300ms ease;
+                }
+                
+                [data-answer].wrapper-hidden {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                    pointer-events: none;
+                }
+                
+                [data-answer].wrapper-visible {
+                    opacity: 1;
+                    transform: translateX(0);
+                    pointer-events: auto;
                 }
             `;
             
