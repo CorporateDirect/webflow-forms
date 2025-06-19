@@ -36,7 +36,8 @@
         initializeForms() {
             // Find all multi-step forms using tryformly data attributes
             const formSelectors = [
-                '[data-multi-step]',
+                '[data-form="multistep"]',  // tryformly.com standard
+                '[data-multi-step]',        // our alternative
                 '[data-formly]',
                 '[data-step-form]',
                 '.multi-step-form'
@@ -84,7 +85,8 @@
             
             // Try different selectors in order of preference
             const selectors = [
-                '[data-step]',
+                '[data-form="step"]',       // tryformly.com standard
+                '[data-step]',              // our alternative
                 '[data-step-number]',
                 '[data-form-step]',
                 '.form-step',
@@ -93,7 +95,15 @@
             
             for (const selector of selectors) {
                 steps = Array.from(form.querySelectorAll(selector));
-                if (steps.length > 0) break;
+                if (steps.length > 0) {
+                    console.log(`📋 Found ${steps.length} steps using selector: ${selector}`);
+                    break;
+                }
+            }
+            
+            if (steps.length === 0) {
+                console.warn('❌ No steps found in form. Tried selectors:', selectors);
+                return [];
             }
             
             // Sort by step number if available
@@ -106,7 +116,7 @@
             // Ensure all steps have proper data attributes
             steps.forEach((step, index) => {
                 const stepNumber = index + 1;
-                if (!step.hasAttribute('data-step')) {
+                if (!step.hasAttribute('data-step') && !step.hasAttribute('data-form')) {
                     step.setAttribute('data-step', stepNumber);
                 }
                 step.classList.add('form-step');
@@ -213,20 +223,22 @@
             }, 300);
         }
         
-        // Button detection methods
+                // Button detection methods
         isNextButton(element) {
             return element.matches([
-                '[data-next]',
+                '[data-form="next-btn"]',   // tryformly.com standard
+                '[data-next]',              // our alternative
                 '[data-step-next]', 
                 '[data-formly-next]',
                 '.next-btn',
                 '.step-next'
             ].join(', '));
         }
-        
+
         isPrevButton(element) {
             return element.matches([
-                '[data-prev]',
+                '[data-form="back-btn"]',   // tryformly.com standard  
+                '[data-prev]',              // our alternative
                 '[data-step-prev]',
                 '[data-formly-prev]', 
                 '.prev-btn',
@@ -236,7 +248,8 @@
         
         isSubmitButton(element) {
             return element.matches([
-                '[data-submit]',
+                '[data-form="submit-btn"]', // tryformly.com standard
+                '[data-submit]',            // our alternative
                 '[data-step-submit]',
                 '[data-formly-submit]',
                 '.submit-btn',
