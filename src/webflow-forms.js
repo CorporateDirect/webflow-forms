@@ -3409,26 +3409,55 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Determine the next step based on current selections
         determineNextStep: function(currentStep) {
-            // Check for selected branching options
+            console.log('Determining next step from current step...');
+            
+            // Priority 1: Check for selected branching options (radio buttons with data-go-to)
             const selectedRadio = currentStep.querySelector('input[type="radio"]:checked[data-go-to]');
             if (selectedRadio) {
+                console.log(`Found selected radio: ${selectedRadio.value} -> ${selectedRadio.dataset.goTo}`);
                 return selectedRadio.dataset.goTo;
             }
             
-            // Check for visible step items
-            const visibleStepItem = currentStep.querySelector('.step_item:not([style*="display: none"])');
+            // Priority 2: Use stored selected branch from branching state
+            if (this.branchingState.selectedBranch) {
+                console.log(`Using stored selected branch: ${this.branchingState.selectedBranch}`);
+                const branch = this.branchingState.selectedBranch;
+                // Clear the selected branch after using it to prevent interference with future navigation
+                this.branchingState.selectedBranch = null;
+                return branch;
+            }
+            
+            // Priority 3: Check for visible step items in current step
+            const visibleStepItem = currentStep.querySelector('.step_item:not([style*="display: none"]):not([style*="visibility: hidden"])');
             if (visibleStepItem) {
+                console.log(`Found visible step item: ${visibleStepItem.dataset.answer} -> ${visibleStepItem.dataset.goTo}`);
                 return visibleStepItem.dataset.goTo;
             }
             
-            // Fallback to step wrapper's go-to
+            // Priority 4: Check for any step items with data-go-to in current step
+            const anyStepItem = currentStep.querySelector('.step_item[data-go-to]');
+            if (anyStepItem) {
+                console.log(`Found step item with go-to: ${anyStepItem.dataset.answer} -> ${anyStepItem.dataset.goTo}`);
+                return anyStepItem.dataset.goTo;
+            }
+            
+            // Priority 5: Fallback to step wrapper's go-to
             const stepWrapper = currentStep.querySelector('[data-go-to]');
-            return stepWrapper?.dataset.goTo;
+            if (stepWrapper) {
+                console.log(`Using step wrapper go-to: ${stepWrapper.dataset.goTo}`);
+                return stepWrapper.dataset.goTo;
+            }
+            
+            console.warn('No next step determined - all methods failed');
+            return null;
         },
 
         // Navigate to a specific step
         navigateToStep: function(stepId, direction = 'forward') {
             console.log(`Navigating to step: ${stepId} (${direction})`);
+            
+            // Store the selected branch before clearing it
+            const selectedBranch = this.branchingState.selectedBranch;
             
             // Hide current step
             if (this.branchingState.currentStep) {
@@ -3447,7 +3476,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 this.branchingState.currentStep = targetStep;
                 
                 // Handle conditional step items within the target step
-                this.handleStepItemVisibility(targetStep, direction);
+                this.handleStepItemVisibility(targetStep, direction, selectedBranch);
+                
+                // Clear the selected branch after navigation is complete
+                this.branchingState.selectedBranch = null;
                 
                 // Trigger custom event
                 this.triggerCustomEvent(targetStep, 'stepNavigation', {
@@ -3557,7 +3589,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         },
 
         // Handle step item visibility based on selected branch
-        handleStepItemVisibility: function(targetStep, direction = 'forward') {
+        handleStepItemVisibility: function(targetStep, direction = 'forward', selectedBranch = null) {
             const stepItems = targetStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
             
             if (stepItems.length === 0) {
@@ -3592,8 +3624,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     }
                 }
             } else {
-                // For forward navigation, use current selected branch
-                branchToShow = this.branchingState.selectedBranch;
+                // For forward navigation, use the passed selectedBranch parameter
+                branchToShow = selectedBranch || this.branchingState.selectedBranch;
+                console.log(`Using selected branch for forward navigation: ${branchToShow}`);
             }
             
             // Show the appropriate step item
