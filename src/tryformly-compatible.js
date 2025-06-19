@@ -872,13 +872,20 @@
             console.log(`🔍 SHOW STEP: Classes before show:`, step.className);
             console.log(`🔍 SHOW STEP: Computed display before:`, window.getComputedStyle(step).display);
             
-            step.style.display = 'block';
-            step.style.visibility = 'visible';
-            step.style.opacity = '1';
-            step.style.position = 'static';
-            step.style.left = 'auto';
+            // Use setProperty with important to override aggressive hiding CSS
+            step.style.setProperty('display', 'block', 'important');
+            step.style.setProperty('visibility', 'visible', 'important');
+            step.style.setProperty('opacity', '1', 'important');
+            step.style.setProperty('position', 'relative', 'important');
+            step.style.setProperty('left', 'auto', 'important');
+            step.style.setProperty('top', 'auto', 'important');
+            step.style.setProperty('width', 'auto', 'important');
+            step.style.setProperty('height', 'auto', 'important');
+            step.style.setProperty('overflow', 'visible', 'important');
+            step.style.setProperty('pointer-events', 'auto', 'important');
+            step.style.setProperty('z-index', 'auto', 'important');
             
-            // Remove ALL hiding classes
+            // Remove ALL hiding classes and add visible class
             step.classList.remove('step-hidden', 'immediately-hidden', 'class-hidden');
             step.classList.add('step-visible', 'step-enter');
             
@@ -991,11 +998,14 @@
             console.log(`🔍 HIDE STEP: Classes before hide:`, step.className);
             console.log(`🔍 HIDE STEP: Computed display before:`, window.getComputedStyle(step).display);
             
-            step.style.display = 'none';  // Hide immediately
-            step.style.visibility = 'hidden';
-            step.style.opacity = '0';
-            step.style.position = 'absolute';
-            step.style.left = '-9999px';
+            // Use setProperty with important to ensure hiding overrides any other CSS
+            step.style.setProperty('display', 'none', 'important');
+            step.style.setProperty('visibility', 'hidden', 'important');
+            step.style.setProperty('opacity', '0', 'important');
+            step.style.setProperty('position', 'absolute', 'important');
+            step.style.setProperty('left', '-9999px', 'important');
+            step.style.setProperty('top', '-9999px', 'important');
+            step.style.setProperty('pointer-events', 'none', 'important');
             
             step.classList.remove('step-visible', 'step-enter');
             step.classList.add('step-hidden');
@@ -1577,6 +1587,67 @@
     (function hideStepsImmediately() {
         console.log('🔍 IMMEDIATE HIDING: Script executing, DOM state:', document.readyState);
         
+        // Inject aggressive CSS immediately to hide steps
+        const immediateStyle = document.createElement('style');
+        immediateStyle.id = 'immediate-step-hiding';
+        immediateStyle.innerHTML = `
+            /* IMMEDIATE HIDING - Maximum specificity to override Webflow */
+            [data-form="step"]:not(.step-visible),
+            [data-step]:not(.step-visible),
+            [data-step-number]:not(.step-visible),
+            [data-form-step]:not(.step-visible),
+            .form-step:not(.step-visible),
+            .step:not(.step-visible) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                pointer-events: none !important;
+                z-index: -1 !important;
+            }
+            
+            /* Ensure step-visible class shows steps */
+            [data-form="step"].step-visible,
+            [data-step].step-visible,
+            [data-step-number].step-visible,
+            [data-form-step].step-visible,
+            .form-step.step-visible,
+            .step.step-visible {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: auto !important;
+                height: auto !important;
+                overflow: visible !important;
+                pointer-events: auto !important;
+                z-index: auto !important;
+            }
+        `;
+        
+        // Insert at the very beginning of head to ensure it loads first
+        if (document.head) {
+            document.head.insertBefore(immediateStyle, document.head.firstChild);
+        } else {
+            // If head doesn't exist yet, wait for it
+            const headObserver = new MutationObserver((mutations, observer) => {
+                if (document.head) {
+                    document.head.insertBefore(immediateStyle, document.head.firstChild);
+                    observer.disconnect();
+                }
+            });
+            headObserver.observe(document.documentElement, { childList: true });
+        }
+        
+        console.log('💉 IMMEDIATE: Injected aggressive step hiding CSS');
+        
         const stepSelectors = [
             '[data-form="step"]',
             '[data-step]',
@@ -1601,11 +1672,17 @@
                     opacity: step.style.opacity
                 });
                 
-                step.style.display = 'none';
-                step.style.visibility = 'hidden';
-                step.style.opacity = '0';
-                step.style.position = 'absolute';
-                step.style.left = '-9999px';
+                // Remove any step-visible class that might exist
+                step.classList.remove('step-visible');
+                
+                // Add aggressive inline styles as backup
+                step.style.setProperty('display', 'none', 'important');
+                step.style.setProperty('visibility', 'hidden', 'important');
+                step.style.setProperty('opacity', '0', 'important');
+                step.style.setProperty('position', 'absolute', 'important');
+                step.style.setProperty('left', '-9999px', 'important');
+                step.style.setProperty('top', '-9999px', 'important');
+                step.style.setProperty('pointer-events', 'none', 'important');
                 step.classList.add('immediately-hidden');
                 
                 console.log(`🔍 IMMEDIATE: Step styles after:`, {
@@ -1623,6 +1700,51 @@
         if (totalStepsFound === 0) {
             console.warn('⚠️ IMMEDIATE HIDING: No steps found! DOM might not be ready or selectors might be wrong');
             console.log('🔍 IMMEDIATE: Available elements in DOM:', document.querySelectorAll('*').length);
+            
+            // Set up a MutationObserver to catch steps that might be added later
+            const observer = new MutationObserver((mutations) => {
+                let newStepsFound = 0;
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            stepSelectors.forEach(selector => {
+                                if (node.matches && node.matches(selector)) {
+                                    console.log(`🔍 MUTATION: Found new step:`, node);
+                                    node.classList.remove('step-visible');
+                                    node.style.setProperty('display', 'none', 'important');
+                                    node.style.setProperty('visibility', 'hidden', 'important');
+                                    node.classList.add('immediately-hidden');
+                                    newStepsFound++;
+                                }
+                                // Also check children
+                                const childSteps = node.querySelectorAll && node.querySelectorAll(selector);
+                                if (childSteps) {
+                                    childSteps.forEach(childStep => {
+                                        console.log(`🔍 MUTATION: Found child step:`, childStep);
+                                        childStep.classList.remove('step-visible');
+                                        childStep.style.setProperty('display', 'none', 'important');
+                                        childStep.style.setProperty('visibility', 'hidden', 'important');
+                                        childStep.classList.add('immediately-hidden');
+                                        newStepsFound++;
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                if (newStepsFound > 0) {
+                    console.log(`🔍 MUTATION: Hidden ${newStepsFound} new steps`);
+                }
+            });
+            
+            observer.observe(document.body || document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Stop observing after 5 seconds
+            setTimeout(() => observer.disconnect(), 5000);
         }
     })();
 
