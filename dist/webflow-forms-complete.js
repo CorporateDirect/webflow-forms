@@ -775,6 +775,7 @@
             
             // Check if step is actually in viewport
             const rect = step.getBoundingClientRect();
+            const computedStyles = window.getComputedStyle(step);
             console.log(`🔍 SHOW STEP: Element position:`, {
                 top: rect.top,
                 left: rect.left,
@@ -782,6 +783,24 @@
                 height: rect.height,
                 visible: rect.width > 0 && rect.height > 0
             });
+            
+            // Check for visibility blockers
+            console.log(`🔍 SHOW STEP: Potential visibility blockers:`, {
+                zIndex: computedStyles.zIndex,
+                transform: computedStyles.transform,
+                backgroundColor: computedStyles.backgroundColor,
+                color: computedStyles.color,
+                fontSize: computedStyles.fontSize,
+                lineHeight: computedStyles.lineHeight,
+                textIndent: computedStyles.textIndent,
+                clipPath: computedStyles.clipPath,
+                mask: computedStyles.mask
+            });
+            
+            // Check what element is actually at the step's position
+            const elementAtPosition = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
+            console.log(`🔍 SHOW STEP: Element at step position:`, elementAtPosition);
+            console.log(`🔍 SHOW STEP: Is step the top element?`, elementAtPosition === step || step.contains(elementAtPosition));
             
             // Handle step-wrappers with data-answer attributes (tryformly branching logic)
             this.showStepWrappers(step);
@@ -793,6 +812,12 @@
                     firstInput.focus();
                 }
             }, this.config.transitionDuration);
+            
+            // Add visual debugging aid
+            step.style.border = '5px solid red';
+            step.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            step.style.zIndex = '9999';
+            console.log(`🔧 SHOW STEP: Added red border for visual debugging`);
             
             // Force visibility as a last resort
             if (rect.width === 0 || rect.height === 0) {
