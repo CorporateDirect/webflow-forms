@@ -35,7 +35,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             currentStep: null,
             stepHistory: [],
             conditionalSteps: new Map(),
-            branchingRules: new Map()
+            branchingRules: new Map(),
+            selectedBranch: null
         },
 
         // Clear caches (useful for debugging)
@@ -3344,39 +3345,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 goTo: goTo
             });
             
-            // Find all step items that match this branching decision
-            const currentStep = input.closest('[data-form="step"]');
-            const stepItems = currentStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
-            
-            console.log(`Found ${stepItems.length} step items in current step`);
-            stepItems.forEach(item => {
-                console.log(`Step item: ${item.dataset.answer} -> ${item.dataset.goTo}`);
-            });
-            
-            // Hide all step items first
-            stepItems.forEach(item => {
-                this.hideStepItem(item);
-                console.log(`Hiding step item: ${item.dataset.answer}`);
-            });
-            
-            // Show the selected step item
-            const targetItem = currentStep.querySelector(`[data-answer="${goTo}"]`);
-            if (targetItem) {
-                this.showStepItem(targetItem);
-                console.log(`Showing step item: ${goTo}`);
-                
-                // Update branching state
-                this.branchingState.conditionalSteps.forEach((stepInfo, stepId) => {
-                    if (stepId === goTo) {
-                        stepInfo.isVisible = true;
-                    } else if (stepInfo.parentStep === currentStep) {
-                        stepInfo.isVisible = false;
-                    }
-                });
-            } else {
-                console.warn(`Target step item not found: "${goTo}"`);
-                console.log(`Available step items:`, Array.from(stepItems).map(item => item.dataset.answer));
-            }
+            // Store the selection for later use when navigating to the next step
+            this.branchingState.selectedBranch = goTo;
+            console.log(`Stored selected branch: ${goTo}`);
             
             // Trigger custom event
             this.triggerCustomEvent(input, 'branchingChange', {
@@ -3447,12 +3418,61 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 this.showStep(targetStep);
                 this.branchingState.currentStep = targetStep;
                 
+                // Handle conditional step items within the target step
+                this.handleStepItemVisibility(targetStep);
+                
                 // Trigger custom event
                 this.triggerCustomEvent(targetStep, 'stepNavigation', {
                     stepId: stepId,
                     direction: direction,
                     step: targetStep
                 });
+            }
+        },
+
+        // Handle step item visibility based on selected branch
+        handleStepItemVisibility: function(targetStep) {
+            const stepItems = targetStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
+            
+            if (stepItems.length === 0) {
+                console.log('No step items found in target step');
+                return;
+            }
+            
+            console.log(`Found ${stepItems.length} step items in target step`);
+            
+            // Hide all step items first
+            stepItems.forEach(item => {
+                this.hideStepItem(item);
+                console.log(`Hiding step item: ${item.dataset.answer}`);
+            });
+            
+            // Show the selected step item if we have a selected branch
+            if (this.branchingState.selectedBranch) {
+                const targetItem = targetStep.querySelector(`[data-answer="${this.branchingState.selectedBranch}"]`);
+                if (targetItem) {
+                    this.showStepItem(targetItem);
+                    console.log(`Showing step item: ${this.branchingState.selectedBranch}`);
+                    
+                    // Update branching state
+                    this.branchingState.conditionalSteps.forEach((stepInfo, stepId) => {
+                        if (stepId === this.branchingState.selectedBranch) {
+                            stepInfo.isVisible = true;
+                        } else if (stepInfo.parentStep === targetStep) {
+                            stepInfo.isVisible = false;
+                        }
+                    });
+                } else {
+                    console.warn(`Target step item not found: "${this.branchingState.selectedBranch}"`);
+                    console.log(`Available step items:`, Array.from(stepItems).map(item => item.dataset.answer));
+                }
+            } else {
+                console.log('No selected branch stored, showing default step item');
+                // Show first step item as default if no selection
+                if (stepItems.length > 0) {
+                    this.showStepItem(stepItems[0]);
+                    console.log(`Showing default step item: ${stepItems[0].dataset.answer}`);
+                }
             }
         },
 
