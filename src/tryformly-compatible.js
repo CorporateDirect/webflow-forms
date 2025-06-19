@@ -227,30 +227,52 @@
             const target = e.target;
             const formId = this.getFormId(target);
             
-            if (!formId) return;
+            console.log(`🔍 CLICK: Element clicked:`, target);
+            console.log(`🔍 CLICK: Form ID: ${formId}`);
+            console.log(`🔍 CLICK: Element attributes:`, {
+                'data-go-to': target.getAttribute('data-go-to'),
+                'data-answer': target.getAttribute('data-answer'),
+                'data-next': target.getAttribute('data-next'),
+                'data-form': target.getAttribute('data-form'),
+                'class': target.className
+            });
+            
+            if (!formId) {
+                console.warn(`⚠️ CLICK: No form ID found for clicked element`);
+                return;
+            }
             
             // Navigation buttons (tryformly data attributes)
             if (this.isNextButton(target)) {
+                console.log(`➡️ CLICK: Next button clicked`);
                 e.preventDefault();
                 this.nextStep(formId);
             } else if (this.isPrevButton(target)) {
+                console.log(`⬅️ CLICK: Prev button clicked`);
                 e.preventDefault();
                 this.prevStep(formId);
             } else if (this.isSubmitButton(target)) {
+                console.log(`📤 CLICK: Submit button clicked`);
                 e.preventDefault();
                 this.submitForm(formId);
             }
             
             // Conditional navigation (data-go-to)
             else if (target.hasAttribute('data-go-to')) {
+                console.log(`🎯 CLICK: Element with data-go-to clicked`);
                 e.preventDefault();
                 this.handleGoTo(formId, target);
             }
             
             // Skip functionality (data-skip)
             else if (target.hasAttribute('data-skip')) {
+                console.log(`⏭️ CLICK: Element with data-skip clicked`);
                 e.preventDefault();
                 this.handleSkip(formId, target);
+            }
+            
+            else {
+                console.log(`🔍 CLICK: No special handling for this element`);
             }
         }
         
@@ -323,13 +345,20 @@
         
         // Core navigation methods
         nextStep(formId) {
+            console.log(`🔍 NEXT STEP: Starting nextStep for ${formId}`);
+            
             const formData = this.forms.get(formId);
-            if (!formData) return;
+            if (!formData) {
+                console.warn(`⚠️ NEXT STEP: No form data found for ${formId}`);
+                return;
+            }
             
             const currentStepIndex = this.currentSteps.get(formId);
+            console.log(`🔍 NEXT STEP: Current step index: ${currentStepIndex} (display: ${currentStepIndex + 1})`);
             
             // Validate current step
             if (this.config.validateOnNext && !this.validateStep(formId, currentStepIndex)) {
+                console.log('❌ NEXT STEP: Validation failed, staying on current step');
                 return false;
             }
             
@@ -338,10 +367,13 @@
             
             // Calculate next step (with skip logic)
             const nextStepIndex = this.getNextStepIndex(formId, currentStepIndex);
+            console.log(`🔍 NEXT STEP: Next step index: ${nextStepIndex} (display: ${nextStepIndex + 1})`);
             
             if (nextStepIndex < formData.totalSteps) {
+                console.log(`➡️ NEXT STEP: Going to step ${nextStepIndex + 1}`);
                 this.goToStep(formId, nextStepIndex);
             } else {
+                console.log(`🏁 NEXT STEP: Reached end, handling completion`);
                 this.handleComplete(formId);
             }
             
@@ -357,29 +389,47 @@
         }
         
         goToStep(formId, targetStepIndex, addToHistory = true) {
+            console.log(`🔍 GO TO STEP: Going from step ${this.currentSteps.get(formId) + 1} to step ${targetStepIndex + 1}`);
+            
             const formData = this.forms.get(formId);
-            if (!formData) return;
+            if (!formData) {
+                console.warn(`⚠️ GO TO STEP: No form data found for ${formId}`);
+                return;
+            }
             
             const currentStepIndex = this.currentSteps.get(formId);
             
-            if (targetStepIndex === currentStepIndex) return;
-            if (targetStepIndex < 0 || targetStepIndex >= formData.totalSteps) return;
+            if (targetStepIndex === currentStepIndex) {
+                console.log(`🔍 GO TO STEP: Already on target step ${targetStepIndex + 1}, skipping`);
+                return;
+            }
+            
+            if (targetStepIndex < 0 || targetStepIndex >= formData.totalSteps) {
+                console.warn(`⚠️ GO TO STEP: Invalid step index ${targetStepIndex}, total steps: ${formData.totalSteps}`);
+                return;
+            }
+            
+            console.log(`🔍 GO TO STEP: Valid transition from ${currentStepIndex + 1} to ${targetStepIndex + 1}`);
             
             // Add to history for back navigation
             if (addToHistory && targetStepIndex > currentStepIndex) {
                 this.stepHistory.get(formId).push(currentStepIndex);
+                console.log(`📚 GO TO STEP: Added step ${currentStepIndex + 1} to history`);
             }
             
             // Hide current step
+            console.log(`🔍 GO TO STEP: Hiding current step ${currentStepIndex + 1}`);
             this.hideStep(formData.steps[currentStepIndex]);
             
             // Show target step after transition
             setTimeout(() => {
+                console.log(`🔍 GO TO STEP: Showing target step ${targetStepIndex + 1}`);
                 this.showStep(formData.steps[targetStepIndex]);
                 this.currentSteps.set(formId, targetStepIndex);
                 this.updateProgress(formId);
                 this.updateNavigation(formId);
                 this.triggerStepChangeEvent(formId, targetStepIndex, currentStepIndex);
+                console.log(`✅ GO TO STEP: Successfully moved to step ${targetStepIndex + 1}`);
             }, this.config.transitionDuration);
         }
         
@@ -439,10 +489,14 @@
             const targetStep = element.getAttribute('data-go-to');
             const requiredAnswer = element.getAttribute('data-answer');
             
+            console.log(`🔍 HANDLE GO-TO: Processing data-go-to="${targetStep}" with data-answer="${requiredAnswer}"`);
+            
             // Check if answer matches (if specified)
             if (requiredAnswer) {
                 const elementValue = this.getElementValue(element);
+                console.log(`🔍 HANDLE GO-TO: Element value: "${elementValue}", required: "${requiredAnswer}"`);
                 if (elementValue !== requiredAnswer) {
+                    console.log(`❌ HANDLE GO-TO: Answer doesn't match, not navigating`);
                     return; // Don't navigate if answer doesn't match
                 }
             }
@@ -453,15 +507,30 @@
                 formData.set('_lastGoTo', targetStep);
             }
             
-            // Handle numeric step navigation
+            // Handle numeric step navigation (e.g., "2", "3")
             if (/^\d+$/.test(targetStep)) {
                 const targetStepIndex = parseInt(targetStep) - 1; // Convert to 0-based
+                console.log(`🔍 HANDLE GO-TO: Numeric step "${targetStep}" -> index ${targetStepIndex}`);
                 if (targetStepIndex >= 0) {
                     this.goToStep(formId, targetStepIndex);
                 }
-            } else {
-                // Handle named step navigation (for step-wrappers)
-                // Go to next step and let showStepWrappers handle the wrapper selection
+            } 
+            // Handle named step navigation (e.g., "step-2", "step-3")
+            else if (targetStep.startsWith('step-')) {
+                const stepNumber = targetStep.replace('step-', '');
+                if (/^\d+$/.test(stepNumber)) {
+                    const targetStepIndex = parseInt(stepNumber) - 1; // Convert to 0-based
+                    console.log(`🔍 HANDLE GO-TO: Named step "${targetStep}" -> step ${stepNumber} -> index ${targetStepIndex}`);
+                    if (targetStepIndex >= 0) {
+                        this.goToStep(formId, targetStepIndex);
+                    }
+                } else {
+                    console.warn(`⚠️ HANDLE GO-TO: Invalid step name format: ${targetStep}`);
+                }
+            } 
+            else {
+                // Handle other named navigation (for step-wrappers)
+                console.log(`🔍 HANDLE GO-TO: Other named navigation: ${targetStep}, using nextStep`);
                 this.nextStep(formId);
             }
         }
