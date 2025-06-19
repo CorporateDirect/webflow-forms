@@ -36,7 +36,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             stepHistory: [],
             conditionalSteps: new Map(),
             branchingRules: new Map(),
-            selectedBranch: null
+            selectedBranch: null,
+            branchHistory: [] // Track branching decisions for back navigation
         },
 
         // Clear caches (useful for debugging)
@@ -3349,6 +3350,28 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.branchingState.selectedBranch = goTo;
             console.log(`Stored selected branch: ${goTo}`);
             
+            // Store branching decision in history for back navigation
+            const currentStep = input.closest('[data-form="step"]');
+            const branchDecision = {
+                stepElement: currentStep,
+                selectedBranch: goTo,
+                inputElement: input,
+                timestamp: Date.now()
+            };
+            
+            // Update or add to branch history
+            const existingIndex = this.branchingState.branchHistory.findIndex(
+                decision => decision.stepElement === currentStep
+            );
+            
+            if (existingIndex >= 0) {
+                this.branchingState.branchHistory[existingIndex] = branchDecision;
+            } else {
+                this.branchingState.branchHistory.push(branchDecision);
+            }
+            
+            console.log(`Stored branch decision in history:`, branchDecision);
+            
             // Trigger custom event
             this.triggerCustomEvent(input, 'branchingChange', {
                 from: input.value,
@@ -3419,7 +3442,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 this.branchingState.currentStep = targetStep;
                 
                 // Handle conditional step items within the target step
-                this.handleStepItemVisibility(targetStep);
+                this.handleStepItemVisibility(targetStep, direction);
                 
                 // Trigger custom event
                 this.triggerCustomEvent(targetStep, 'stepNavigation', {
@@ -3430,8 +3453,28 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
         },
 
+        // Find relevant branch decision for a target step
+        findRelevantBranchDecision: function(targetStep) {
+            // Look through branch history to find decisions that led to this step
+            for (let i = this.branchingState.branchHistory.length - 1; i >= 0; i--) {
+                const decision = this.branchingState.branchHistory[i];
+                
+                // Check if this decision's target matches any step items in the target step
+                const stepItems = targetStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
+                for (const item of stepItems) {
+                    if (item.dataset.answer === decision.selectedBranch) {
+                        console.log(`Found relevant decision: ${decision.selectedBranch} for step`);
+                        return decision;
+                    }
+                }
+            }
+            
+            console.log('No relevant branch decision found for target step');
+            return null;
+        },
+
         // Handle step item visibility based on selected branch
-        handleStepItemVisibility: function(targetStep) {
+        handleStepItemVisibility: function(targetStep, direction = 'forward') {
             const stepItems = targetStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
             
             if (stepItems.length === 0) {
@@ -3447,27 +3490,53 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 console.log(`Hiding step item: ${item.dataset.answer}`);
             });
             
-            // Show the selected step item if we have a selected branch
-            if (this.branchingState.selectedBranch) {
-                const targetItem = targetStep.querySelector(`[data-answer="${this.branchingState.selectedBranch}"]`);
+            let branchToShow = null;
+            
+            // For back navigation, look for previous branching decisions
+            if (direction === 'back') {
+                console.log('Back navigation detected, looking for previous branch decision...');
+                
+                // Find the most recent branching decision that led to this step
+                const relevantDecision = this.findRelevantBranchDecision(targetStep);
+                if (relevantDecision) {
+                    branchToShow = relevantDecision.selectedBranch;
+                    console.log(`Found previous branch decision: ${branchToShow}`);
+                    
+                    // Restore the radio button selection
+                    if (relevantDecision.inputElement && relevantDecision.inputElement.type === 'radio') {
+                        relevantDecision.inputElement.checked = true;
+                        console.log(`Restored radio selection: ${relevantDecision.inputElement.value}`);
+                    }
+                }
+            } else {
+                // For forward navigation, use current selected branch
+                branchToShow = this.branchingState.selectedBranch;
+            }
+            
+            // Show the appropriate step item
+            if (branchToShow) {
+                const targetItem = targetStep.querySelector(`[data-answer="${branchToShow}"]`);
                 if (targetItem) {
                     this.showStepItem(targetItem);
-                    console.log(`Showing step item: ${this.branchingState.selectedBranch}`);
+                    console.log(`Showing step item: ${branchToShow}`);
+                    
+                    // Update current selected branch
+                    this.branchingState.selectedBranch = branchToShow;
                     
                     // Update branching state
                     this.branchingState.conditionalSteps.forEach((stepInfo, stepId) => {
-                        if (stepId === this.branchingState.selectedBranch) {
+                        if (stepId === branchToShow) {
                             stepInfo.isVisible = true;
                         } else if (stepInfo.parentStep === targetStep) {
                             stepInfo.isVisible = false;
                         }
                     });
                 } else {
-                    console.warn(`Target step item not found: "${this.branchingState.selectedBranch}"`);
+                    console.warn(`Target step item not found: "${branchToShow}"`);
                     console.log(`Available step items:`, Array.from(stepItems).map(item => item.dataset.answer));
                 }
             } else {
-                console.log('No selected branch stored, showing default step item');
+                console.log('No branch decision found, showing default step item');
                 // Show first step item as default if no selection
                 if (stepItems.length > 0) {
                     this.showStepItem(stepItems[0]);
@@ -3548,6 +3617,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         resetBranchingState: function() {
             this.branchingState.currentStep = null;
             this.branchingState.stepHistory = [];
+            this.branchingState.branchHistory = [];
+            this.branchingState.selectedBranch = null;
             
             // Reset form to first step
             const form = document.querySelector('[data-form="multistep"]');
