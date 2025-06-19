@@ -3407,48 +3407,256 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
         },
 
-        // Determine the next step based on current selections
+        // Determine the next step based on current selections - Flexible and extensible approach
         determineNextStep: function(currentStep) {
-            console.log('Determining next step from current step...');
+            console.log('🔍 Determining next step from current step...');
             
-            // Priority 1: Check for selected branching options (radio buttons with data-go-to)
-            const selectedRadio = currentStep.querySelector('input[type="radio"]:checked[data-go-to]');
-            if (selectedRadio) {
-                console.log(`Found selected radio: ${selectedRadio.value} -> ${selectedRadio.dataset.goTo}`);
-                return selectedRadio.dataset.goTo;
+            // Priority 1: Active form controls with explicit navigation (radio buttons, checkboxes, selects)
+            const activeControl = this.findActiveNavigationControl(currentStep);
+            if (activeControl) {
+                console.log(`✅ Found active control: ${activeControl.type} -> ${activeControl.target}`);
+                return activeControl.target;
             }
             
-            // Priority 2: Use stored selected branch from branching state
+            // Priority 2: Stored branching state (from previous selections)
             if (this.branchingState.selectedBranch) {
-                console.log(`Using stored selected branch: ${this.branchingState.selectedBranch}`);
+                console.log(`✅ Using stored selected branch: ${this.branchingState.selectedBranch}`);
                 const branch = this.branchingState.selectedBranch;
-                // Clear the selected branch after using it to prevent interference with future navigation
-                this.branchingState.selectedBranch = null;
+                this.branchingState.selectedBranch = null; // Clear after use
                 return branch;
             }
             
-            // Priority 3: Check for visible step items in current step
-            const visibleStepItem = currentStep.querySelector('.step_item:not([style*="display: none"]):not([style*="visibility: hidden"])');
-            if (visibleStepItem) {
-                console.log(`Found visible step item: ${visibleStepItem.dataset.answer} -> ${visibleStepItem.dataset.goTo}`);
-                return visibleStepItem.dataset.goTo;
+            // Priority 3: Visible step items with navigation (branch scenarios)
+            const stepItemNavigation = this.findStepItemNavigation(currentStep);
+            if (stepItemNavigation) {
+                console.log(`✅ Found step item navigation: ${stepItemNavigation.source} -> ${stepItemNavigation.target}`);
+                return stepItemNavigation.target;
             }
             
-            // Priority 4: Check for any step items with data-go-to in current step
+            // Priority 4: Intelligent pattern-based navigation (sequential, conditional)
+            const patternNavigation = this.findPatternBasedNavigation(currentStep);
+            if (patternNavigation) {
+                console.log(`✅ Pattern-based navigation: ${patternNavigation.pattern} -> ${patternNavigation.target}`);
+                return patternNavigation.target;
+            }
+            
+            // Priority 5: Fallback navigation (step wrappers, default paths)
+            const fallbackNavigation = this.findFallbackNavigation(currentStep);
+            if (fallbackNavigation) {
+                console.log(`✅ Fallback navigation: ${fallbackNavigation.source} -> ${fallbackNavigation.target}`);
+                return fallbackNavigation.target;
+            }
+            
+            console.warn('❌ No next step determined - all navigation methods failed');
+            return null;
+        },
+
+        // Find active navigation controls (radio buttons, checkboxes, selects with data-go-to)
+        findActiveNavigationControl: function(currentStep) {
+            // Radio buttons
+            const selectedRadio = currentStep.querySelector('input[type="radio"]:checked[data-go-to]');
+            if (selectedRadio) {
+                return {
+                    type: 'radio',
+                    element: selectedRadio,
+                    value: selectedRadio.value,
+                    target: selectedRadio.dataset.goTo
+                };
+            }
+            
+            // Checkboxes
+            const selectedCheckbox = currentStep.querySelector('input[type="checkbox"]:checked[data-go-to]');
+            if (selectedCheckbox) {
+                return {
+                    type: 'checkbox',
+                    element: selectedCheckbox,
+                    value: selectedCheckbox.value,
+                    target: selectedCheckbox.dataset.goTo
+                };
+            }
+            
+            // Select dropdowns
+            const selectedOption = currentStep.querySelector('select option:checked[data-go-to]');
+            if (selectedOption) {
+                return {
+                    type: 'select',
+                    element: selectedOption,
+                    value: selectedOption.value,
+                    target: selectedOption.dataset.goTo
+                };
+            }
+            
+            return null;
+        },
+
+        // Find navigation within step items (branch scenarios)
+        findStepItemNavigation: function(currentStep) {
+            const visibleStepItem = currentStep.querySelector('.step_item:not([style*="display: none"]):not([style*="visibility: hidden"])');
+            if (!visibleStepItem) return null;
+            
+            // Direct data-go-to on step item
+            if (visibleStepItem.dataset.goTo) {
+                return {
+                    type: 'step-item-direct',
+                    source: visibleStepItem.dataset.answer,
+                    target: visibleStepItem.dataset.goTo
+                };
+            }
+            
+            // Navigation elements within step item (buttons, links, etc.)
+            const navElements = [
+                'button[data-go-to]',
+                '[data-form="next-btn"][data-go-to]',
+                'a[data-go-to]',
+                '.next-btn[data-go-to]',
+                '[data-go-to]'
+            ];
+            
+            for (const selector of navElements) {
+                const navElement = visibleStepItem.querySelector(selector);
+                if (navElement) {
+                    return {
+                        type: 'step-item-child',
+                        source: visibleStepItem.dataset.answer,
+                        element: navElement,
+                        target: navElement.dataset.goTo
+                    };
+                }
+            }
+            
+            return null;
+        },
+
+        // Find pattern-based navigation (sequential, conditional, custom patterns)
+        findPatternBasedNavigation: function(currentStep) {
+            // Sequential patterns (manager-1 -> manager-2, member-1 -> member-2)
+            const visibleStepItem = currentStep.querySelector('.step_item:not([style*="display: none"]):not([style*="visibility: hidden"])');
+            if (visibleStepItem && visibleStepItem.dataset.answer) {
+                const sequentialNext = this.determineSequentialNextStep(visibleStepItem.dataset.answer);
+                if (sequentialNext) {
+                    return {
+                        type: 'sequential',
+                        pattern: 'numbered-sequence',
+                        source: visibleStepItem.dataset.answer,
+                        target: sequentialNext
+                    };
+                }
+            }
+            
+            // Add more pattern types here as needed:
+            // - Conditional patterns
+            // - Custom business logic patterns
+            // - Date-based patterns
+            // - User role-based patterns
+            
+            return null;
+        },
+
+        // Find fallback navigation options
+        findFallbackNavigation: function(currentStep) {
+            // Step items with data-go-to (any step item, visible or not)
             const anyStepItem = currentStep.querySelector('.step_item[data-go-to]');
             if (anyStepItem) {
-                console.log(`Found step item with go-to: ${anyStepItem.dataset.answer} -> ${anyStepItem.dataset.goTo}`);
-                return anyStepItem.dataset.goTo;
+                return {
+                    type: 'step-item-fallback',
+                    source: anyStepItem.dataset.answer,
+                    target: anyStepItem.dataset.goTo
+                };
             }
             
-            // Priority 5: Fallback to step wrapper's go-to
+            // Step wrapper navigation
             const stepWrapper = currentStep.querySelector('[data-go-to]');
             if (stepWrapper) {
-                console.log(`Using step wrapper go-to: ${stepWrapper.dataset.goTo}`);
-                return stepWrapper.dataset.goTo;
+                return {
+                    type: 'step-wrapper',
+                    source: 'step-wrapper',
+                    target: stepWrapper.dataset.goTo
+                };
             }
             
-            console.warn('No next step determined - all methods failed');
+            // Next sibling step (DOM-based fallback)
+            const nextStep = currentStep.nextElementSibling;
+            if (nextStep && nextStep.dataset.form === 'step') {
+                const nextStepId = this.getStepId(nextStep);
+                if (nextStepId) {
+                    return {
+                        type: 'dom-sibling',
+                        source: 'dom-navigation',
+                        target: nextStepId
+                    };
+                }
+            }
+            
+            return null;
+        },
+
+        // Determine the next step in a sequential pattern (e.g., manager-individual-1 -> manager-2)
+        determineSequentialNextStep: function(currentBranch) {
+            console.log(`Analyzing sequential pattern for: ${currentBranch}`);
+            
+            // Pattern matching for managers: manager-individual-1 -> manager-2, manager-entity-1 -> manager-2, etc.
+            const managerMatch = currentBranch.match(/^manager-(individual|entity|trust)-(\d+)$/);
+            if (managerMatch) {
+                const [, type, number] = managerMatch;
+                const currentNum = parseInt(number);
+                const nextNum = currentNum + 1;
+                const nextStep = `manager-${nextNum}`;
+                
+                console.log(`Manager pattern detected: ${currentBranch} -> ${nextStep}`);
+                
+                // Check if the next manager step exists
+                if (document.querySelector(`[data-answer="${nextStep}"]`)) {
+                    return nextStep;
+                } else {
+                    console.log(`Next manager step ${nextStep} not found, checking for member-1`);
+                    // If no more managers, go to first member
+                    if (document.querySelector(`[data-answer="member-1"]`)) {
+                        return 'member-1';
+                    }
+                }
+            }
+            
+            // Pattern matching for members: member-individual-1 -> member-2, member-entity-1 -> member-2, etc.
+            const memberMatch = currentBranch.match(/^member-(individual|entity|trust)-(\d+)$/);
+            if (memberMatch) {
+                const [, type, number] = memberMatch;
+                const currentNum = parseInt(number);
+                const nextNum = currentNum + 1;
+                const nextStep = `member-${nextNum}`;
+                
+                console.log(`Member pattern detected: ${currentBranch} -> ${nextStep}`);
+                
+                // Check if the next member step exists
+                if (document.querySelector(`[data-answer="${nextStep}"]`)) {
+                    return nextStep;
+                } else {
+                    console.log(`Next member step ${nextStep} not found, sequence may be complete`);
+                }
+            }
+            
+            // Pattern matching for simple numbered sequences: manager-1 -> manager-2, member-1 -> member-2
+            const simpleMatch = currentBranch.match(/^(manager|member)-(\d+)$/);
+            if (simpleMatch) {
+                const [, type, number] = simpleMatch;
+                const currentNum = parseInt(number);
+                const nextNum = currentNum + 1;
+                const nextStep = `${type}-${nextNum}`;
+                
+                console.log(`Simple sequence detected: ${currentBranch} -> ${nextStep}`);
+                
+                // Check if the next step exists
+                if (document.querySelector(`[data-answer="${nextStep}"]`)) {
+                    return nextStep;
+                } else if (type === 'manager') {
+                    console.log(`Next manager step ${nextStep} not found, checking for member-1`);
+                    // If no more managers, go to first member
+                    if (document.querySelector(`[data-answer="member-1"]`)) {
+                        return 'member-1';
+                    }
+                }
+            }
+            
+            console.log(`No sequential pattern found for: ${currentBranch}`);
             return null;
         },
 
