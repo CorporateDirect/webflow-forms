@@ -755,6 +755,33 @@
             });
             console.log(`🔍 SHOW STEP: Computed display after:`, window.getComputedStyle(step).display);
             
+            // Debug parent elements that might be hiding the step
+            let parent = step.parentElement;
+            let level = 1;
+            while (parent && level <= 3) {
+                const parentStyles = window.getComputedStyle(parent);
+                console.log(`🔍 SHOW STEP: Parent ${level} (${parent.tagName}.${parent.className}):`, {
+                    display: parentStyles.display,
+                    visibility: parentStyles.visibility,
+                    opacity: parentStyles.opacity,
+                    overflow: parentStyles.overflow,
+                    height: parentStyles.height,
+                    maxHeight: parentStyles.maxHeight
+                });
+                parent = parent.parentElement;
+                level++;
+            }
+            
+            // Check if step is actually in viewport
+            const rect = step.getBoundingClientRect();
+            console.log(`🔍 SHOW STEP: Element position:`, {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                visible: rect.width > 0 && rect.height > 0
+            });
+            
             // Handle step-wrappers with data-answer attributes (tryformly branching logic)
             this.showStepWrappers(step);
             
@@ -765,6 +792,27 @@
                     firstInput.focus();
                 }
             }, this.config.transitionDuration);
+            
+            // Force visibility as a last resort
+            if (rect.width === 0 || rect.height === 0) {
+                console.log(`🔧 SHOW STEP: Step has no dimensions, forcing visibility`);
+                step.style.display = 'block';
+                step.style.visibility = 'visible';
+                step.style.opacity = '1';
+                step.style.position = 'static';
+                step.style.width = 'auto';
+                step.style.height = 'auto';
+                step.style.overflow = 'visible';
+                
+                // Force reflow
+                step.offsetHeight;
+                
+                const newRect = step.getBoundingClientRect();
+                console.log(`🔧 SHOW STEP: After force - dimensions:`, {
+                    width: newRect.width,
+                    height: newRect.height
+                });
+            }
             
             console.log(`✅ SHOW STEP: Step should now be visible`);
         }
@@ -1287,6 +1335,18 @@
             `;
             
             document.head.appendChild(style);
+            console.log('🎨 CSS: Injected tryformly-compatible styles');
+            
+            // Verify CSS is working by checking a test element
+            setTimeout(() => {
+                const testSteps = document.querySelectorAll('[data-form="step"]');
+                if (testSteps.length > 0) {
+                    const testStep = testSteps[0];
+                    const computedStyle = window.getComputedStyle(testStep);
+                    console.log('🎨 CSS: Test step computed display:', computedStyle.display);
+                    console.log('🎨 CSS: Test step classes:', testStep.className);
+                }
+            }, 100);
         }
         
         // Public API (tryformly compatibility)
