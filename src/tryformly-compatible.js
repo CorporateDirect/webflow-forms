@@ -252,6 +252,77 @@
             }
             target._lastClickTime = now;
             
+            // Check if this is a radio button or radio label click
+            let radioInput = null;
+            let parentWithAttributes = null;
+            
+            if (target.type === 'radio') {
+                radioInput = target;
+                console.log(`📻 CLICK: Direct radio button click`);
+            } else if (target.tagName === 'LABEL') {
+                // Find associated radio button
+                const forAttr = target.getAttribute('for');
+                if (forAttr) {
+                    radioInput = document.getElementById(forAttr);
+                    console.log(`📻 CLICK: Label click, found radio:`, radioInput);
+                } else {
+                    // Look for radio inside label
+                    radioInput = target.querySelector('input[type="radio"]');
+                    console.log(`📻 CLICK: Label click, radio inside:`, radioInput);
+                }
+            } else {
+                // Check if clicked element is inside a radio container
+                const radioContainer = target.closest('.radio_field, .w-radio, [data-go-to]');
+                if (radioContainer) {
+                    radioInput = radioContainer.querySelector('input[type="radio"]');
+                    console.log(`📻 CLICK: Container click, found radio:`, radioInput);
+                }
+            }
+            
+            // If we found a radio input, handle it specially
+            if (radioInput) {
+                console.log(`📻 CLICK: Processing radio button:`, radioInput);
+                
+                // Ensure the radio gets selected
+                if (!radioInput.checked) {
+                    radioInput.checked = true;
+                    console.log(`📻 CLICK: Selected radio button`);
+                    
+                    // Trigger change event to save data
+                    radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                // Look for data attributes on the radio input, its label, or parent containers
+                parentWithAttributes = this.findElementWithGoToAttributes(radioInput);
+                
+                if (parentWithAttributes) {
+                    console.log(`📻 CLICK: Found element with data attributes:`, parentWithAttributes);
+                    const goTo = parentWithAttributes.getAttribute('data-go-to');
+                    const answer = parentWithAttributes.getAttribute('data-answer');
+                    
+                    if (goTo) {
+                        console.log(`📻 CLICK: Radio has data-go-to="${goTo}" and data-answer="${answer}"`);
+                        
+                        // Create a temporary element with the attributes for handleGoTo
+                        const tempElement = {
+                            getAttribute: (attr) => parentWithAttributes.getAttribute(attr),
+                            name: radioInput.name,
+                            value: radioInput.value,
+                            type: 'radio',
+                            checked: true
+                        };
+                        
+                        // Small delay to allow for visual feedback
+                        setTimeout(() => {
+                            this.handleGoTo(formId, tempElement);
+                        }, 200);
+                        
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            }
+            
             // Navigation buttons (tryformly data attributes)
             if (this.isNextButton(target)) {
                 console.log(`➡️ CLICK: Next button clicked`);
@@ -291,11 +362,43 @@
             }
         }
         
+        // Helper method to find element with data-go-to attributes
+        findElementWithGoToAttributes(radioInput) {
+            // Check the radio input itself
+            if (radioInput.hasAttribute('data-go-to')) {
+                return radioInput;
+            }
+            
+            // Check associated label
+            if (radioInput.id) {
+                const label = document.querySelector(`label[for="${radioInput.id}"]`);
+                if (label && label.hasAttribute('data-go-to')) {
+                    return label;
+                }
+            }
+            
+            // Check parent label
+            const parentLabel = radioInput.closest('label');
+            if (parentLabel && parentLabel.hasAttribute('data-go-to')) {
+                return parentLabel;
+            }
+            
+            // Check radio container classes
+            const radioContainer = radioInput.closest('.radio_field, .w-radio, [data-go-to]');
+            if (radioContainer && radioContainer.hasAttribute('data-go-to')) {
+                return radioContainer;
+            }
+            
+            return null;
+        }
+
         handleChange(e) {
             const target = e.target;
             const formId = this.getFormId(target);
             
             if (!formId) return;
+            
+            console.log(`🔄 CHANGE: Field changed:`, target);
             
             // Save field data
             this.saveFieldData(formId, target);
@@ -303,6 +406,27 @@
             // Handle conditional logic based on data-answer
             if (target.hasAttribute('data-answer')) {
                 this.checkConditionalLogic(formId, target);
+            }
+            
+            // For radio buttons, also check parent elements for data attributes
+            if (target.type === 'radio') {
+                console.log(`📻 CHANGE: Radio button changed, checking for navigation attributes`);
+                
+                const elementWithAttributes = this.findElementWithGoToAttributes(target);
+                if (elementWithAttributes && elementWithAttributes.hasAttribute('data-go-to')) {
+                    console.log(`📻 CHANGE: Found data-go-to on radio element`);
+                    
+                    // Create a temporary element with the attributes for conditional logic
+                    const tempElement = {
+                        getAttribute: (attr) => elementWithAttributes.getAttribute(attr),
+                        name: target.name,
+                        value: target.value,
+                        type: 'radio',
+                        checked: target.checked
+                    };
+                    
+                    this.checkConditionalLogic(formId, tempElement);
+                }
             }
             
             // Handle radio button skip logic
