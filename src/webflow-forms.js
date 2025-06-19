@@ -3294,13 +3294,20 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Listen for all form input changes
             form.addEventListener('change', (event) => {
-                this.handleBranchingChange(event);
+                if (event.target.dataset.goTo) {
+                    console.log('Change event triggered for:', event.target.id || event.target.name);
+                    this.handleBranchingChange(event);
+                }
             });
             
-            // Listen for radio button clicks specifically
+            // Listen for radio button clicks specifically (for immediate feedback)
             form.addEventListener('click', (event) => {
                 if (event.target.type === 'radio' && event.target.dataset.goTo) {
-                    this.handleBranchingChange(event);
+                    console.log('Click event triggered for radio:', event.target.id || event.target.name);
+                    // Use setTimeout to ensure the radio is checked before handling
+                    setTimeout(() => {
+                        this.handleBranchingChange(event);
+                    }, 10);
                 }
             });
             
@@ -3321,11 +3328,30 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             if (!goTo) return;
             
-            console.log(`Branching change detected: ${input.value} -> ${goTo}`);
+            // Only handle radio buttons that are actually checked
+            if (input.type === 'radio' && !input.checked) {
+                console.log(`Skipping unchecked radio: ${input.value}`);
+                return;
+            }
+            
+            console.log(`Branching change detected: "${input.value}" -> "${goTo}"`);
+            console.log(`Input details:`, {
+                id: input.id,
+                name: input.name,
+                value: input.value,
+                checked: input.checked,
+                type: input.type,
+                goTo: goTo
+            });
             
             // Find all step items that match this branching decision
             const currentStep = input.closest('[data-form="step"]');
             const stepItems = currentStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
+            
+            console.log(`Found ${stepItems.length} step items in current step`);
+            stepItems.forEach(item => {
+                console.log(`Step item: ${item.dataset.answer} -> ${item.dataset.goTo}`);
+            });
             
             // Hide all step items first
             stepItems.forEach(item => {
@@ -3348,7 +3374,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     }
                 });
             } else {
-                console.warn(`Target step item not found: ${goTo}`);
+                console.warn(`Target step item not found: "${goTo}"`);
+                console.log(`Available step items:`, Array.from(stepItems).map(item => item.dataset.answer));
             }
             
             // Trigger custom event
