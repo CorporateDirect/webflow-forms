@@ -3171,28 +3171,53 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         mapFormSteps: function(form) {
             console.log('Mapping form steps and conditions...');
             
-            // Find all steps
+            // Find all main steps
             const steps = form.querySelectorAll('[data-form="step"]');
             
             steps.forEach((step, index) => {
                 const stepWrapper = step.querySelector('[data-go-to], [data-answer]');
-                if (!stepWrapper) return;
                 
-                const stepId = this.getStepId(step, index);
-                const goTo = stepWrapper.dataset.goTo;
-                const answer = stepWrapper.dataset.answer;
+                // Map main step
+                if (stepWrapper) {
+                    const stepId = this.getStepId(step, index);
+                    const goTo = stepWrapper.dataset.goTo;
+                    const answer = stepWrapper.dataset.answer;
+                    
+                    // Store step information
+                    this.branchingState.conditionalSteps.set(stepId, {
+                        element: step,
+                        wrapper: stepWrapper,
+                        goTo: goTo,
+                        answer: answer,
+                        index: index,
+                        isVisible: index === 0 // First step visible by default
+                    });
+                    
+                    console.log(`Mapped main step: ${stepId}`, { goTo, answer });
+                }
                 
-                // Store step information
-                this.branchingState.conditionalSteps.set(stepId, {
-                    element: step,
-                    wrapper: stepWrapper,
-                    goTo: goTo,
-                    answer: answer,
-                    index: index,
-                    isVisible: index === 0 // First step visible by default
+                // Also map step_item elements within this step (for branching conditions)
+                const stepItems = step.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
+                stepItems.forEach((stepItem, itemIndex) => {
+                    const itemId = stepItem.dataset.answer;
+                    const itemGoTo = stepItem.dataset.goTo;
+                    
+                    if (itemId) {
+                        this.branchingState.conditionalSteps.set(itemId, {
+                            element: stepItem,
+                            wrapper: stepItem,
+                            goTo: itemGoTo,
+                            answer: itemId,
+                            index: index,
+                            itemIndex: itemIndex,
+                            isStepItem: true,
+                            parentStep: step,
+                            isVisible: false // Step items start hidden
+                        });
+                        
+                        console.log(`Mapped step item: ${itemId}`, { goTo: itemGoTo, parentStep: index });
+                    }
                 });
-                
-                console.log(`Mapped step: ${stepId}`, { goTo, answer });
             });
 
             // Find all branching inputs (radio buttons, selects with data-go-to)
@@ -3300,17 +3325,30 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Find all step items that match this branching decision
             const currentStep = input.closest('[data-form="step"]');
-            const stepItems = currentStep.querySelectorAll('[data-answer]');
+            const stepItems = currentStep.querySelectorAll('.step_item[data-answer], .step-item[data-answer]');
             
             // Hide all step items first
             stepItems.forEach(item => {
                 this.hideStepItem(item);
+                console.log(`Hiding step item: ${item.dataset.answer}`);
             });
             
             // Show the selected step item
             const targetItem = currentStep.querySelector(`[data-answer="${goTo}"]`);
             if (targetItem) {
                 this.showStepItem(targetItem);
+                console.log(`Showing step item: ${goTo}`);
+                
+                // Update branching state
+                this.branchingState.conditionalSteps.forEach((stepInfo, stepId) => {
+                    if (stepId === goTo) {
+                        stepInfo.isVisible = true;
+                    } else if (stepInfo.parentStep === currentStep) {
+                        stepInfo.isVisible = false;
+                    }
+                });
+            } else {
+                console.warn(`Target step item not found: ${goTo}`);
             }
             
             // Trigger custom event
@@ -3445,14 +3483,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Show a step item (for conditional content within steps)
         showStepItem: function(item) {
-            item.style.display = 'block';
+            item.style.display = '';  // Reset to default display style
+            item.style.visibility = 'visible';
             item.classList.add('active-step-item');
+            console.log(`Step item shown: ${item.dataset.answer}`);
         },
 
         // Hide a step item
         hideStepItem: function(item) {
             item.style.display = 'none';
+            item.style.visibility = 'hidden';
             item.classList.remove('active-step-item');
+            console.log(`Step item hidden: ${item.dataset.answer}`);
         },
 
         // Reset branching state
