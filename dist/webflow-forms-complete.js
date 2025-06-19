@@ -521,6 +521,9 @@
             const formData = this.formData.get(formId);
             if (formData) {
                 formData.set('_lastGoTo', targetStep);
+                // Also store the target step value for step-wrapper matching
+                formData.set('_currentNavigation', targetStep);
+                console.log(`🔍 HANDLE GO-TO: Stored navigation data: _lastGoTo="${targetStep}", _currentNavigation="${targetStep}"`);
             }
             
             // Handle numeric step navigation (e.g., "2", "3")
@@ -878,10 +881,17 @@
             // Find all step-wrappers in this step
             const stepWrappers = step.querySelectorAll('[data-answer]');
             
-            if (stepWrappers.length === 0) return;
+            if (stepWrappers.length === 0) {
+                console.log('📋 STEP WRAPPER: No step-wrappers found in this step');
+                return;
+            }
+            
+            console.log(`📋 STEP WRAPPER: Found ${stepWrappers.length} step-wrappers`);
             
             // Hide all step-wrappers initially
-            stepWrappers.forEach(wrapper => {
+            stepWrappers.forEach((wrapper, index) => {
+                const answerValue = wrapper.getAttribute('data-answer');
+                console.log(`📋 STEP WRAPPER: Wrapper ${index + 1} has data-answer="${answerValue}"`);
                 wrapper.style.display = 'none';
                 wrapper.classList.remove('wrapper-visible');
                 wrapper.classList.add('wrapper-hidden');
@@ -894,7 +904,7 @@
                 activeWrapper.style.display = 'block';
                 activeWrapper.classList.remove('wrapper-hidden');
                 activeWrapper.classList.add('wrapper-visible');
-                console.log(`📋 Showing wrapper with data-answer="${activeWrapper.getAttribute('data-answer')}"`);
+                console.log(`📋 STEP WRAPPER: Showing wrapper with data-answer="${activeWrapper.getAttribute('data-answer')}"`);
             } else {
                 // Show first wrapper with empty data-answer (first step wrapper)
                 const firstWrapper = step.querySelector('[data-answer=""]');
@@ -902,7 +912,16 @@
                     firstWrapper.style.display = 'block';
                     firstWrapper.classList.remove('wrapper-hidden');
                     firstWrapper.classList.add('wrapper-visible');
-                    console.log('📋 Showing first step wrapper (data-answer="")');
+                    console.log('📋 STEP WRAPPER: Showing first step wrapper (data-answer="")');
+                } else {
+                    // If no empty data-answer wrapper, show the first wrapper
+                    const fallbackWrapper = stepWrappers[0];
+                    if (fallbackWrapper) {
+                        fallbackWrapper.style.display = 'block';
+                        fallbackWrapper.classList.remove('wrapper-hidden');
+                        fallbackWrapper.classList.add('wrapper-visible');
+                        console.log(`📋 STEP WRAPPER: No empty wrapper found, showing first wrapper with data-answer="${fallbackWrapper.getAttribute('data-answer')}"`);
+                    }
                 }
             }
         }
@@ -927,16 +946,31 @@
         }
         
         hasMatchingFormValue(formData, answerValue) {
+            console.log(`🔍 WRAPPER MATCH: Checking if form data matches "${answerValue}"`);
+            
             // Check if any form field has this value
             for (const [fieldName, fieldValue] of formData) {
+                console.log(`🔍 WRAPPER MATCH: Field "${fieldName}" = "${fieldValue}"`);
                 if (fieldValue === answerValue) {
+                    console.log(`✅ WRAPPER MATCH: Found match in field "${fieldName}"`);
                     return true;
                 }
             }
             
             // Also check for direct step navigation values
             // (when data-go-to points to a step name instead of field value)
-            return formData.has('_lastGoTo') && formData.get('_lastGoTo') === answerValue;
+            const lastGoTo = formData.get('_lastGoTo');
+            const currentNav = formData.get('_currentNavigation');
+            
+            console.log(`🔍 WRAPPER MATCH: Navigation data - _lastGoTo="${lastGoTo}", _currentNavigation="${currentNav}"`);
+            
+            if (lastGoTo === answerValue || currentNav === answerValue) {
+                console.log(`✅ WRAPPER MATCH: Found match in navigation data`);
+                return true;
+            }
+            
+            console.log(`❌ WRAPPER MATCH: No match found for "${answerValue}"`);
+            return false;
         }
         
         // UI updates
