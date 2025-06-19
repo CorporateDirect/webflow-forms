@@ -548,8 +548,16 @@
                 }
             } 
             else {
-                // Handle other named navigation (for step-wrappers)
-                console.log(`🔍 HANDLE GO-TO: Other named navigation: ${targetStep}, using nextStep`);
+                // Handle branch navigation (for step-wrappers)
+                console.log(`🌳 HANDLE GO-TO: Branch navigation to "${targetStep}"`);
+                console.log(`🌳 HANDLE GO-TO: This should go to next step and show wrapper with matching data-answer`);
+                
+                // Store the branch target for wrapper matching
+                if (formData) {
+                    formData.set('_branchTarget', targetStep);
+                    console.log(`🌳 HANDLE GO-TO: Stored branch target: "${targetStep}"`);
+                }
+                
                 this.nextStep(formId);
             }
         }
@@ -558,21 +566,30 @@
             const goToStep = field.getAttribute('data-go-to');
             const answerValue = field.getAttribute('data-answer');
             
+            console.log(`🌳 CONDITIONAL: Checking field with data-go-to="${goToStep}", data-answer="${answerValue}"`);
+            
             if (goToStep && answerValue) {
                 const fieldValue = this.getElementValue(field);
+                console.log(`🌳 CONDITIONAL: Field value="${fieldValue}", required answer="${answerValue}"`);
                 
                 // For radio buttons, only proceed if this one is checked
                 if (field.type === 'radio' && !field.checked) {
+                    console.log(`🌳 CONDITIONAL: Radio button not checked, skipping`);
                     return;
                 }
                 
                 // Check if value matches required answer
                 if (fieldValue === answerValue) {
+                    console.log(`🌳 CONDITIONAL: Values match! Triggering navigation to "${goToStep}"`);
                     // Small delay for visual feedback
                     setTimeout(() => {
                         this.handleGoTo(formId, field);
                     }, 100);
+                } else {
+                    console.log(`🌳 CONDITIONAL: Values don't match, no navigation`);
                 }
+            } else {
+                console.log(`🌳 CONDITIONAL: No conditional logic on this field`);
             }
         }
         
@@ -957,14 +974,14 @@
                 }
             }
             
-            // Also check for direct step navigation values
-            // (when data-go-to points to a step name instead of field value)
+            // Check for direct step navigation values
             const lastGoTo = formData.get('_lastGoTo');
             const currentNav = formData.get('_currentNavigation');
+            const branchTarget = formData.get('_branchTarget');
             
-            console.log(`🔍 WRAPPER MATCH: Navigation data - _lastGoTo="${lastGoTo}", _currentNavigation="${currentNav}"`);
+            console.log(`🔍 WRAPPER MATCH: Navigation data - _lastGoTo="${lastGoTo}", _currentNavigation="${currentNav}", _branchTarget="${branchTarget}"`);
             
-            if (lastGoTo === answerValue || currentNav === answerValue) {
+            if (lastGoTo === answerValue || currentNav === answerValue || branchTarget === answerValue) {
                 console.log(`✅ WRAPPER MATCH: Found match in navigation data`);
                 return true;
             }
