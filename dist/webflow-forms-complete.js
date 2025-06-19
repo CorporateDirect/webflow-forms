@@ -243,18 +243,31 @@
                 return;
             }
             
+            // Prevent double-clicks with debounce
+            const now = Date.now();
+            const lastClick = target._lastClickTime || 0;
+            if (now - lastClick < 500) {
+                console.log(`🚫 CLICK: Debounced double-click`);
+                e.preventDefault();
+                return;
+            }
+            target._lastClickTime = now;
+            
             // Navigation buttons (tryformly data attributes)
             if (this.isNextButton(target)) {
                 console.log(`➡️ CLICK: Next button clicked`);
                 e.preventDefault();
+                e.stopPropagation();
                 this.nextStep(formId);
             } else if (this.isPrevButton(target)) {
                 console.log(`⬅️ CLICK: Prev button clicked`);
                 e.preventDefault();
+                e.stopPropagation();
                 this.prevStep(formId);
             } else if (this.isSubmitButton(target)) {
                 console.log(`📤 CLICK: Submit button clicked`);
                 e.preventDefault();
+                e.stopPropagation();
                 this.submitForm(formId);
             }
             
@@ -262,6 +275,7 @@
             else if (target.hasAttribute('data-go-to')) {
                 console.log(`🎯 CLICK: Element with data-go-to clicked`);
                 e.preventDefault();
+                e.stopPropagation();
                 this.handleGoTo(formId, target);
             }
             
@@ -269,6 +283,7 @@
             else if (target.hasAttribute('data-skip')) {
                 console.log(`⏭️ CLICK: Element with data-skip clicked`);
                 e.preventDefault();
+                e.stopPropagation();
                 this.handleSkip(formId, target);
             }
             
@@ -1099,12 +1114,33 @@
                 [data-step-number].step-visible,
                 [data-form-step].step-visible,
                 .form-step.step-visible,
-                .step.step-visible {
+                .step.step-visible,
+                .multi-form_step.step-visible {
                     display: block !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     position: static !important;
                     left: auto !important;
+                    transform: none !important;
+                    width: auto !important;
+                    height: auto !important;
+                    overflow: visible !important;
+                    z-index: auto !important;
+                    top: auto !important;
+                    right: auto !important;
+                    bottom: auto !important;
+                }
+                
+                /* Override any Webflow multi-form hiding */
+                .multi-form_step:not(.step-visible) {
+                    display: none !important;
+                }
+                
+                /* Force visible with maximum specificity */
+                div[data-form="step"].multi-form_step.step-visible {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
                 }
                 
                 .step-enter {
