@@ -3278,14 +3278,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const formData = this.forms.get(formId);
             if (!formData) return;
             
-            // Hide all steps except first
+            // Hide all steps immediately, then show first
             formData.steps.forEach((step, index) => {
-                if (index === 0) {
-                    this.showStep(step);
-                } else {
-                    this.hideStep(step);
-                }
+                this.hideStep(step);  // Hide all first
             });
+            
+            // Show first step
+            if (formData.steps.length > 0) {
+                this.showStep(formData.steps[0]);
+            }
             
             this.updateProgress(formId);
             this.updateNavigation(formId);
@@ -3733,13 +3734,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         }
         
         hideStep(step) {
+            step.style.display = 'none';  // Hide immediately
             step.classList.remove('step-visible', 'step-enter');
-            step.classList.add('step-hidden', 'step-exit');
-            
-            setTimeout(() => {
-                step.style.display = 'none';
-                step.classList.remove('step-exit');
-            }, this.config.transitionDuration);
+            step.classList.add('step-hidden');
         }
         
         // Step-wrapper branching logic (tryformly compatibility)
@@ -4026,13 +4023,20 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     transition: opacity 300ms ease, transform 300ms ease;
                 }
                 
+                /* Hide steps by default */
+                [data-form="step"], [data-step] {
+                    display: none !important;
+                }
+                
                 .step-hidden {
+                    display: none !important;
                     opacity: 0;
                     transform: translateX(-20px);
                     pointer-events: none;
                 }
                 
                 .step-visible {
+                    display: block !important;
                     opacity: 1;
                     transform: translateX(0);
                 }
