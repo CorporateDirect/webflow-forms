@@ -27,10 +27,35 @@
         }
         
         init() {
+            // Inject styles first and hide steps immediately
             this.injectStyles();
+            this.hideAllStepsImmediately();
             this.initializeForms();
             this.setupEventListeners();
             console.log('🎯 Tryformly-compatible system initialized');
+        }
+        
+        hideAllStepsImmediately() {
+            // Find and hide all potential steps immediately, before form initialization
+            const stepSelectors = [
+                '[data-form="step"]',
+                '[data-step]',
+                '[data-step-number]',
+                '[data-form-step]',
+                '.form-step',
+                '.step'
+            ];
+            
+            stepSelectors.forEach(selector => {
+                const steps = document.querySelectorAll(selector);
+                steps.forEach(step => {
+                    step.style.display = 'none';
+                    step.style.visibility = 'hidden';
+                    step.classList.add('step-hidden');
+                });
+            });
+            
+            console.log('🔒 Pre-hidden all potential steps');
         }
         
         initializeForms() {
@@ -883,9 +908,13 @@
                     transition: opacity 300ms ease, transform 300ms ease;
                 }
                 
-                /* Hide steps by default */
-                [data-form="step"], [data-step] {
+                /* Hide steps by default - AGGRESSIVE */
+                [data-form="step"], [data-step], [data-step-number], [data-form-step], .form-step, .step {
                     display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
                 }
                 
                 .step-hidden {
@@ -897,7 +926,10 @@
                 
                 .step-visible {
                     display: block !important;
-                    opacity: 1;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    position: static !important;
+                    left: auto !important;
                     transform: translateX(0);
                 }
                 
@@ -1072,11 +1104,39 @@
         }
     }
 
+    // IMMEDIATE step hiding - runs as soon as script loads
+    (function hideStepsImmediately() {
+        const stepSelectors = [
+            '[data-form="step"]',
+            '[data-step]',
+            '[data-step-number]',
+            '[data-form-step]',
+            '.form-step',
+            '.step'
+        ];
+        
+        stepSelectors.forEach(selector => {
+            const steps = document.querySelectorAll(selector);
+            steps.forEach(step => {
+                step.style.display = 'none';
+                step.style.visibility = 'hidden';
+                step.style.opacity = '0';
+                step.style.position = 'absolute';
+                step.style.left = '-9999px';
+            });
+        });
+        
+        if (stepSelectors.some(sel => document.querySelectorAll(sel).length > 0)) {
+            console.log('⚡ Immediately hid steps on script load');
+        }
+    })();
+
     // Initialize when DOM is ready
     let tryformlyInstance;
     
     function initialize() {
         tryformlyInstance = new TryformlyCompatible();
+        tryformlyInstance.init();
         
         // Make available globally (tryformly compatibility)
         window.Formly = tryformlyInstance;

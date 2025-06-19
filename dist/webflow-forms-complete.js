@@ -1,6 +1,3 @@
-// Webflow Forms Complete - Field Enhancements + Multi-Step Forms
-// Includes: Character counters, auto-resize, conditional fields, country codes, phone formatting, Google Places, multi-step forms with tryformly.com compatibility
-
 /**
  * Webflow Field Enhancer - Advanced field behaviors for Webflow forms
  * Provides functionality beyond default Webflow form behavior
@@ -3136,9 +3133,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         module.exports = WebflowFieldEnhancer;
     }
 
-})(window, document); 
-
-/**
+})(window, document); /**
  * Tryformly-Compatible Multi-Step Form System
  * Drop-in replacement for tryformly.com with exact data attribute compatibility
  * Integrates with existing webflow-forms field enhancements
@@ -3167,10 +3162,35 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         }
         
         init() {
+            // Inject styles first and hide steps immediately
             this.injectStyles();
+            this.hideAllStepsImmediately();
             this.initializeForms();
             this.setupEventListeners();
             console.log('🎯 Tryformly-compatible system initialized');
+        }
+        
+        hideAllStepsImmediately() {
+            // Find and hide all potential steps immediately, before form initialization
+            const stepSelectors = [
+                '[data-form="step"]',
+                '[data-step]',
+                '[data-step-number]',
+                '[data-form-step]',
+                '.form-step',
+                '.step'
+            ];
+            
+            stepSelectors.forEach(selector => {
+                const steps = document.querySelectorAll(selector);
+                steps.forEach(step => {
+                    step.style.display = 'none';
+                    step.style.visibility = 'hidden';
+                    step.classList.add('step-hidden');
+                });
+            });
+            
+            console.log('🔒 Pre-hidden all potential steps');
         }
         
         initializeForms() {
@@ -4023,9 +4043,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     transition: opacity 300ms ease, transform 300ms ease;
                 }
                 
-                /* Hide steps by default */
-                [data-form="step"], [data-step] {
+                /* Hide steps by default - AGGRESSIVE */
+                [data-form="step"], [data-step], [data-step-number], [data-form-step], .form-step, .step {
                     display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
                 }
                 
                 .step-hidden {
@@ -4037,7 +4061,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 
                 .step-visible {
                     display: block !important;
-                    opacity: 1;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    position: static !important;
+                    left: auto !important;
                     transform: translateX(0);
                 }
                 
@@ -4212,11 +4239,39 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         }
     }
 
+    // IMMEDIATE step hiding - runs as soon as script loads
+    (function hideStepsImmediately() {
+        const stepSelectors = [
+            '[data-form="step"]',
+            '[data-step]',
+            '[data-step-number]',
+            '[data-form-step]',
+            '.form-step',
+            '.step'
+        ];
+        
+        stepSelectors.forEach(selector => {
+            const steps = document.querySelectorAll(selector);
+            steps.forEach(step => {
+                step.style.display = 'none';
+                step.style.visibility = 'hidden';
+                step.style.opacity = '0';
+                step.style.position = 'absolute';
+                step.style.left = '-9999px';
+            });
+        });
+        
+        if (stepSelectors.some(sel => document.querySelectorAll(sel).length > 0)) {
+            console.log('⚡ Immediately hid steps on script load');
+        }
+    })();
+
     // Initialize when DOM is ready
     let tryformlyInstance;
     
     function initialize() {
         tryformlyInstance = new TryformlyCompatible();
+        tryformlyInstance.init();
         
         // Make available globally (tryformly compatibility)
         window.Formly = tryformlyInstance;
@@ -4232,23 +4287,3 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
     }
 
 })(window, document); 
-
-// Initialize both systems
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize field enhancements (if WebflowFieldEnhancer exists)
-    if (typeof WebflowFieldEnhancer !== 'undefined') {
-        const fieldEnhancer = new WebflowFieldEnhancer();
-        fieldEnhancer.init();
-        window.WebflowFieldEnhancer = fieldEnhancer;
-    }
-    
-    // Initialize multi-step forms  
-    const tryformlyInstance = new TryformlyCompatible();
-    tryformlyInstance.init();
-    
-    // Make available globally (tryformly compatibility)
-    window.Formly = tryformlyInstance;
-    window.TryformlyCompatible = tryformlyInstance;
-    
-    console.log('🚀 Webflow Forms Complete - All systems ready');
-});
