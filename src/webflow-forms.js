@@ -38,7 +38,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             branchingRules: new Map(),
             selectedBranch: null,
             branchHistory: [], // Track branching decisions for back navigation
-            skipHistory: [] // Track skip navigation for analytics
+            skipHistory: [], // Track skip navigation for analytics
+            validationErrors: new Map() // Track validation errors for each field
         },
 
         // Clear caches (useful for debugging)
@@ -48,6 +49,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.branchingState.conditionalSteps.clear();
             this.branchingState.branchingRules.clear();
             this.branchingState.stepHistory = [];
+            this.branchingState.validationErrors.clear();
         },
 
         // Get flag emoji for country ISO code
@@ -3167,6 +3169,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Initialize step visibility
                 this.initializeStepVisibility(form);
                 
+                // Initialize custom error validation system
+                this.initCustomErrorValidation(form);
+                
                 console.log('Modular branching logic initialized successfully');
                 console.log(`Detected ${patterns.members.length} member patterns, ${patterns.managers.length} manager patterns, ${patterns.other.length} other patterns`);
                 
@@ -4136,20 +4141,386 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             };
         },
 
-        // Validate current step
-        validateCurrentStep: function() {
-            if (!this.branchingState.currentStep) return false;
+        // Custom Error Validation System
+        // ================================
+
+        // Initialize custom error validation
+        initCustomErrorValidation: function(form) {
+            console.log('🔍 Initializing custom error validation system...');
             
-            const requiredFields = this.branchingState.currentStep.querySelectorAll('input[required], select[required], textarea[required]');
+            // Find all required fields and their error messages
+            const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
             
-            for (const field of requiredFields) {
-                if (!field.value.trim()) {
-                    console.log('Validation failed for field:', field.name || field.id);
-                    return false;
+            requiredFields.forEach(field => {
+                this.setupFieldValidation(field);
+            });
+            
+            // Setup form submission validation
+            this.setupFormSubmissionValidation(form);
+            
+            // Setup step navigation validation
+            this.setupStepNavigationValidation(form);
+            
+            console.log(`✅ Custom validation setup complete for ${requiredFields.length} required fields`);
+        },
+
+        // Setup validation for individual field
+        setupFieldValidation: function(field) {
+            const fieldId = field.id || field.name || 'unnamed';
+            console.log(`Setting up validation for field: ${fieldId}`);
+            
+            // Find associated error message element
+            const errorElement = this.findErrorElement(field);
+            
+            if (!errorElement) {
+                console.warn(`No error element found for field: ${fieldId}`);
+                return;
+            }
+            
+            // Store field-error relationship
+            this.branchingState.validationErrors.set(field, {
+                errorElement: errorElement,
+                isValid: true,
+                lastValidated: null
+            });
+            
+            // Add validation event listeners
+            field.addEventListener('blur', () => this.validateField(field));
+            field.addEventListener('input', () => {
+                // Clear error on input if field was previously invalid
+                if (!this.branchingState.validationErrors.get(field)?.isValid) {
+                    this.validateField(field);
+                }
+            });
+            
+            // Handle tab key and focus events
+            field.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' && !field.value.trim() && field.required) {
+                    // Validate on tab if field is empty and required
+                    setTimeout(() => this.validateField(field), 10);
+                }
+            });
+        },
+
+        // Find error element associated with a field
+        findErrorElement: function(field) {
+            // Look for error element in the same field wrapper
+            const fieldWrapper = field.closest('.multi-form_field-wrapper') || field.closest('.multi-form_input-field') || field.parentElement;
+            
+            if (fieldWrapper) {
+                // Look for .text-size-tiny.error-state within the wrapper
+                const errorElement = fieldWrapper.querySelector('.text-size-tiny.error-state');
+                if (errorElement) return errorElement;
+            }
+            
+            // Fallback: look for error element immediately after the field
+            let nextElement = field.nextElementSibling;
+            while (nextElement) {
+                if (nextElement.classList.contains('text-size-tiny') && nextElement.classList.contains('error-state')) {
+                    return nextElement;
+                }
+                nextElement = nextElement.nextElementSibling;
+            }
+            
+            return null;
+        },
+
+        // Validate individual field
+        validateField: function(field, showError = true) {
+            const fieldId = field.id || field.name || 'unnamed';
+            const validationData = this.branchingState.validationErrors.get(field);
+            
+            if (!validationData) {
+                console.warn(`No validation data found for field: ${fieldId}`);
+                return true;
+            }
+            
+            let isValid = true;
+            let errorMessage = 'Required!';
+            
+            // Check if field is required and empty
+            if (field.required && !field.value.trim()) {
+                isValid = false;
+            }
+            
+            // Check for specific field types
+            if (field.type === 'email' && field.value.trim()) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(field.value.trim())) {
+                    isValid = false;
+                    errorMessage = 'Please enter a valid email address!';
                 }
             }
             
-            return true;
+            // Update validation state
+            validationData.isValid = isValid;
+            validationData.lastValidated = new Date();
+            
+            if (showError) {
+                // Show/hide error message and apply styling
+                if (isValid) {
+                    this.hideFieldError(field);
+                } else {
+                    this.showFieldError(field, errorMessage);
+                }
+            }
+            
+            console.log(`🔍 Field validation - ${fieldId}: ${isValid ? '✅ Valid' : '❌ Invalid'}`);
+            return isValid;
+        },
+
+        // Show field error
+        showFieldError: function(field, message = 'Required!') {
+            const validationData = this.branchingState.validationErrors.get(field);
+            if (!validationData) return;
+            
+            const { errorElement } = validationData;
+            
+            // Update error message text
+            if (message && errorElement.textContent !== message) {
+                errorElement.textContent = message;
+            }
+            
+            // Show error message
+            errorElement.style.display = 'block';
+            
+            // Add red border to field
+            this.addErrorStyling(field);
+            
+            // Trigger custom event
+            this.triggerCustomEvent(field, 'validationError', { message });
+        },
+
+        // Hide field error
+        hideFieldError: function(field) {
+            const validationData = this.branchingState.validationErrors.get(field);
+            if (!validationData) return;
+            
+            const { errorElement } = validationData;
+            
+            // Hide error message
+            errorElement.style.display = 'none';
+            
+            // Remove red border from field
+            this.removeErrorStyling(field);
+            
+            // Trigger custom event
+            this.triggerCustomEvent(field, 'validationSuccess');
+        },
+
+        // Add error styling (red border) to field
+        addErrorStyling: function(field) {
+            // Store original border style if not already stored
+            if (!field.dataset.originalBorder) {
+                const computedStyle = window.getComputedStyle(field);
+                field.dataset.originalBorder = computedStyle.border || computedStyle.borderColor || '';
+            }
+            
+            // Apply red border
+            field.style.border = '1.5px solid #dc3545';
+            field.style.borderColor = '#dc3545';
+            field.classList.add('field-error');
+        },
+
+        // Remove error styling from field
+        removeErrorStyling: function(field) {
+            // Restore original border or remove error styling
+            if (field.dataset.originalBorder) {
+                field.style.border = field.dataset.originalBorder;
+                field.style.borderColor = '';
+            } else {
+                field.style.border = '';
+                field.style.borderColor = '';
+            }
+            
+            field.classList.remove('field-error');
+        },
+
+        // Validate all fields in current step
+        validateCurrentStep: function(showErrors = true) {
+            if (!this.branchingState.currentStep) {
+                console.warn('No current step to validate');
+                return false;
+            }
+            
+            console.log('🔍 Validating current step...');
+            
+            const requiredFields = this.branchingState.currentStep.querySelectorAll('input[required], select[required], textarea[required]');
+            let allValid = true;
+            const invalidFields = [];
+            
+            requiredFields.forEach(field => {
+                const isFieldValid = this.validateField(field, showErrors);
+                if (!isFieldValid) {
+                    allValid = false;
+                    invalidFields.push(field);
+                }
+            });
+            
+            if (allValid) {
+                console.log('✅ Current step validation passed');
+            } else {
+                console.log(`❌ Current step validation failed. Invalid fields: ${invalidFields.length}`);
+                
+                // Focus on first invalid field
+                if (showErrors && invalidFields.length > 0) {
+                    setTimeout(() => {
+                        invalidFields[0].focus();
+                    }, 100);
+                }
+            }
+            
+            return allValid;
+        },
+
+        // Validate entire form
+        validateEntireForm: function(showErrors = true) {
+            console.log('🔍 Validating entire form...');
+            
+            const form = document.querySelector('[data-form="multistep"]');
+            if (!form) return false;
+            
+            const allRequiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
+            let allValid = true;
+            const invalidFields = [];
+            
+            allRequiredFields.forEach(field => {
+                // Only validate visible fields
+                const fieldStep = field.closest('[data-form="step"]');
+                if (fieldStep && fieldStep.style.display !== 'none') {
+                    const isFieldValid = this.validateField(field, showErrors);
+                    if (!isFieldValid) {
+                        allValid = false;
+                        invalidFields.push({
+                            field: field,
+                            step: fieldStep
+                        });
+                    }
+                }
+            });
+            
+            if (allValid) {
+                console.log('✅ Entire form validation passed');
+            } else {
+                console.log(`❌ Form validation failed. Invalid fields: ${invalidFields.length}`);
+            }
+            
+            return { isValid: allValid, invalidFields };
+        },
+
+        // Setup form submission validation
+        setupFormSubmissionValidation: function(form) {
+            // Find submit buttons
+            const submitButtons = form.querySelectorAll('[type="submit"], [data-form="submit-btn"]');
+            
+            submitButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    console.log('🚀 Form submission attempted - running validation...');
+                    
+                    const validation = this.validateEntireForm(true);
+                    
+                    if (!validation.isValid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('❌ Form submission blocked due to validation errors');
+                        
+                        // Find first invalid field and navigate to its step
+                        if (validation.invalidFields.length > 0) {
+                            const firstInvalidField = validation.invalidFields[0];
+                            this.navigateToStepWithField(firstInvalidField.field);
+                        }
+                        
+                        return false;
+                    }
+                    
+                    console.log('✅ Form validation passed - allowing submission');
+                });
+            });
+        },
+
+        // Setup step navigation validation
+        setupStepNavigationValidation: function(form) {
+            // Find next step buttons
+            const nextButtons = form.querySelectorAll('[data-form="next-btn"]');
+            
+            nextButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    console.log('➡️ Next step attempted - running validation...');
+                    
+                    const isCurrentStepValid = this.validateCurrentStep(true);
+                    
+                    if (!isCurrentStepValid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('❌ Step navigation blocked due to validation errors');
+                        return false;
+                    }
+                    
+                    console.log('✅ Step validation passed - allowing navigation');
+                });
+            });
+        },
+
+        // Navigate to step containing a specific field
+        navigateToStepWithField: function(field) {
+            const fieldStep = field.closest('[data-form="step"]');
+            if (fieldStep && fieldStep !== this.branchingState.currentStep) {
+                console.log('🧭 Navigating to step with invalid field...');
+                
+                // Hide current step
+                if (this.branchingState.currentStep) {
+                    this.hideStep(this.branchingState.currentStep);
+                }
+                
+                // Show target step
+                this.showStep(fieldStep);
+                this.branchingState.currentStep = fieldStep;
+                
+                // Focus on the invalid field
+                setTimeout(() => {
+                    field.focus();
+                }, 200);
+            }
+        },
+
+        // Clear all validation errors
+        clearAllValidationErrors: function() {
+            console.log('🧹 Clearing all validation errors...');
+            
+            this.branchingState.validationErrors.forEach((validationData, field) => {
+                this.hideFieldError(field);
+            });
+        },
+
+        // Get validation summary
+        getValidationSummary: function() {
+            const summary = {
+                totalFields: this.branchingState.validationErrors.size,
+                validFields: 0,
+                invalidFields: 0,
+                fieldDetails: []
+            };
+            
+            this.branchingState.validationErrors.forEach((validationData, field) => {
+                const fieldId = field.id || field.name || 'unnamed';
+                const fieldInfo = {
+                    fieldId: fieldId,
+                    isValid: validationData.isValid,
+                    lastValidated: validationData.lastValidated
+                };
+                
+                summary.fieldDetails.push(fieldInfo);
+                
+                if (validationData.isValid) {
+                    summary.validFields++;
+                } else {
+                    summary.invalidFields++;
+                }
+            });
+            
+            return summary;
         },
 
         // Trigger custom events - UTILITY METHOD
