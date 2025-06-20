@@ -4239,8 +4239,27 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             let errorMessage = 'Required!';
             
             // Check if field is required and empty
-            if (field.required && !field.value.trim()) {
-                isValid = false;
+            if (field.required) {
+                if (field.tagName.toLowerCase() === 'select') {
+                    // For select dropdowns, check if no valid option is selected
+                    // or if the selected value is empty/placeholder
+                    const selectedValue = field.value;
+                    const selectedOption = field.options[field.selectedIndex];
+                    
+                    if (!selectedValue || 
+                        selectedValue === '' || 
+                        selectedValue === 'Another option' || 
+                        (selectedOption && selectedOption.disabled) ||
+                        selectedValue.toLowerCase().includes('select')) {
+                        isValid = false;
+                        console.log(`Select validation failed - value: "${selectedValue}", selectedIndex: ${field.selectedIndex}`);
+                    }
+                } else {
+                    // For other input types, use trim() check
+                    if (!field.value.trim()) {
+                        isValid = false;
+                    }
+                }
             }
             
             // Check for specific field types
@@ -4265,7 +4284,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             }
             
-            console.log(`🔍 Field validation - ${fieldId}: ${isValid ? '✅ Valid' : '❌ Invalid'}`);
+            console.log(`🔍 Field validation - ${fieldId} (${field.tagName.toLowerCase()}): ${isValid ? '✅ Valid' : '❌ Invalid'} - Value: "${field.value}"`);
             return isValid;
         },
 
@@ -4310,20 +4329,36 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Add error styling (red border) to field
         addErrorStyling: function(field) {
+            const fieldId = field.id || field.name || 'unnamed';
+            const fieldType = field.tagName.toLowerCase();
+            
             // Store original border style if not already stored
             if (!field.dataset.originalBorder) {
                 const computedStyle = window.getComputedStyle(field);
                 field.dataset.originalBorder = computedStyle.border || computedStyle.borderColor || '';
             }
             
-            // Apply red border
+            // Apply red border with enhanced styling for select dropdowns
             field.style.border = '1.5px solid #dc3545';
             field.style.borderColor = '#dc3545';
+            
+            // Additional styling for select dropdowns
+            if (fieldType === 'select') {
+                field.style.outline = 'none';
+                field.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                console.log(`🎨 Applied select error styling to: ${fieldId}`);
+            }
+            
             field.classList.add('field-error');
+            
+            console.log(`🎨 Applied error styling to ${fieldType}: ${fieldId}, classes: ${field.className}`);
         },
 
         // Remove error styling from field
         removeErrorStyling: function(field) {
+            const fieldId = field.id || field.name || 'unnamed';
+            const fieldType = field.tagName.toLowerCase();
+            
             // Restore original border or remove error styling
             if (field.dataset.originalBorder) {
                 field.style.border = field.dataset.originalBorder;
@@ -4333,7 +4368,16 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 field.style.borderColor = '';
             }
             
+            // Clean up additional select dropdown styling
+            if (fieldType === 'select') {
+                field.style.outline = '';
+                field.style.boxShadow = '';
+                console.log(`🧹 Removed select error styling from: ${fieldId}`);
+            }
+            
             field.classList.remove('field-error');
+            
+            console.log(`🧹 Removed error styling from ${fieldType}: ${fieldId}`);
         },
 
         // Validate all fields in current step
