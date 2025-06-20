@@ -3370,12 +3370,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             );
             
             if (existingIndex >= 0) {
+                console.log(`Updating existing branch decision for step:`, this.branchingState.branchHistory[existingIndex]);
                 this.branchingState.branchHistory[existingIndex] = branchDecision;
+                
+                // Clear any downstream branch decisions that might be affected by this change
+                this.branchingState.branchHistory = this.branchingState.branchHistory.slice(0, existingIndex + 1);
+                console.log(`Cleared downstream branch decisions, remaining history:`, this.branchingState.branchHistory.length);
             } else {
                 this.branchingState.branchHistory.push(branchDecision);
+                console.log(`Added new branch decision to history`);
             }
             
-            console.log(`Stored branch decision in history:`, branchDecision);
+            console.log(`Current branch history:`, this.branchingState.branchHistory.map(d => ({
+                step: d.stepElement.dataset.answer || 'unknown',
+                branch: d.selectedBranch,
+                input: d.inputElement.value
+            })));
             
             // Trigger custom event
             this.triggerCustomEvent(input, 'branchingChange', {
@@ -3832,9 +3842,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     }
                 }
             } else {
-                // For forward navigation, use the passed selectedBranch parameter
-                branchToShow = selectedBranch || this.branchingState.selectedBranch;
-                console.log(`Using selected branch for forward navigation: ${branchToShow}`);
+                // For forward navigation, prioritize new selections over history
+                if (selectedBranch) {
+                    branchToShow = selectedBranch;
+                    console.log(`Using new selected branch for forward navigation: ${branchToShow}`);
+                } else if (this.branchingState.selectedBranch) {
+                    branchToShow = this.branchingState.selectedBranch;
+                    console.log(`Using stored selected branch for forward navigation: ${branchToShow}`);
+                } else {
+                    // Only fall back to history if no new selection is available
+                    console.log('No new selection found, checking branch history for forward navigation...');
+                    const relevantDecision = this.findRelevantBranchDecision(targetStep);
+                    if (relevantDecision) {
+                        branchToShow = relevantDecision.selectedBranch;
+                        console.log(`Using historical branch decision for forward navigation: ${branchToShow}`);
+                    }
+                }
             }
             
             // Show the appropriate step item
