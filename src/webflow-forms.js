@@ -37,7 +37,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             conditionalSteps: new Map(),
             branchingRules: new Map(),
             selectedBranch: null,
-            branchHistory: [] // Track branching decisions for back navigation
+            branchHistory: [], // Track branching decisions for back navigation
+            skipHistory: [] // Track skip navigation for analytics
         },
 
         // Clear caches (useful for debugging)
@@ -3318,12 +3319,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             });
             
-            // Listen for next/back button clicks
+            // Listen for next/back button clicks and skip navigation
             form.addEventListener('click', (event) => {
                 if (event.target.dataset.form === 'next-btn') {
                     this.handleNextStep(event);
                 } else if (event.target.dataset.form === 'back-btn') {
                     this.handleBackStep(event);
+                } else if (event.target.dataset.skip) {
+                    this.handleSkipNavigation(event);
+                }
+            });
+            
+            // Listen for radio button changes with data-skip attributes
+            form.addEventListener('change', (event) => {
+                if (event.target.matches('input[type="radio"][data-skip]') && event.target.checked) {
+                    this.handleSkipNavigation(event);
                 }
             });
         },
@@ -3417,6 +3427,68 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
         },
 
+        // Handle skip navigation
+        handleSkipNavigation: function(event) {
+            event.preventDefault();
+            
+            const skipTarget = event.target.dataset.skip;
+            if (!skipTarget) {
+                console.warn('Skip target not specified');
+                return;
+            }
+            
+            console.log(`🚀 Skip navigation triggered: ${event.target.tagName.toLowerCase()} -> ${skipTarget}`);
+            
+            // Log the element that triggered the skip
+            const elementInfo = {
+                tagName: event.target.tagName.toLowerCase(),
+                type: event.target.type || 'N/A',
+                id: event.target.id || 'N/A',
+                className: event.target.className || 'N/A',
+                text: event.target.textContent?.trim() || event.target.value || 'N/A'
+            };
+            console.log(`Skip triggered by:`, elementInfo);
+            
+            // Find the target step
+            const targetStep = this.findStepByAnswer(skipTarget);
+            if (!targetStep) {
+                console.error(`❌ Skip target step not found: "${skipTarget}"`);
+                console.log('Available steps with data-answer:', 
+                    Array.from(document.querySelectorAll('[data-answer]')).map(el => el.dataset.answer)
+                );
+                return;
+            }
+            
+            // Record the skip in history for analytics
+            const currentStep = this.branchingState.currentStep;
+            const skipRecord = {
+                fromStep: this.getCurrentStepId(),
+                toStep: skipTarget,
+                skipElement: event.target,
+                skipType: elementInfo.tagName,
+                timestamp: Date.now()
+            };
+            
+            // Add to branching state for tracking
+            if (!this.branchingState.skipHistory) {
+                this.branchingState.skipHistory = [];
+            }
+            this.branchingState.skipHistory.push(skipRecord);
+            
+            console.log(`✅ Skip navigation: ${skipRecord.fromStep} -> ${skipRecord.toStep}`);
+            
+            // Navigate to the target step
+            this.navigateToStep(skipTarget, 'skip');
+            
+            // Trigger custom event
+            this.triggerCustomEvent(event.target, 'skipNavigation', {
+                from: skipRecord.fromStep,
+                to: skipTarget,
+                skipType: elementInfo.tagName,
+                element: event.target
+            });
+        },
+
         // Determine the next step based on current selections - Flexible and extensible approach
         determineNextStep: function(currentStep) {
             console.log('🔍 Determining next step from current step...');
@@ -3461,9 +3533,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             return null;
         },
 
-        // Find active navigation controls (radio buttons, checkboxes, selects with data-go-to)
+        // Find active navigation controls (radio buttons, checkboxes, selects with data-go-to or data-skip)
         findActiveNavigationControl: function(currentStep) {
-            // Radio buttons
+            // Radio buttons with data-go-to
             const selectedRadio = currentStep.querySelector('input[type="radio"]:checked[data-go-to]');
             if (selectedRadio) {
                 return {
@@ -3474,7 +3546,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 };
             }
             
-            // Checkboxes
+            // Radio buttons with data-skip
+            const selectedRadioSkip = currentStep.querySelector('input[type="radio"]:checked[data-skip]');
+            if (selectedRadioSkip) {
+                return {
+                    type: 'radio-skip',
+                    element: selectedRadioSkip,
+                    value: selectedRadioSkip.value,
+                    target: selectedRadioSkip.dataset.skip
+                };
+            }
+            
+            // Checkboxes with data-go-to
             const selectedCheckbox = currentStep.querySelector('input[type="checkbox"]:checked[data-go-to]');
             if (selectedCheckbox) {
                 return {
@@ -3485,7 +3568,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 };
             }
             
-            // Select dropdowns
+            // Checkboxes with data-skip
+            const selectedCheckboxSkip = currentStep.querySelector('input[type="checkbox"]:checked[data-skip]');
+            if (selectedCheckboxSkip) {
+                return {
+                    type: 'checkbox-skip',
+                    element: selectedCheckboxSkip,
+                    value: selectedCheckboxSkip.value,
+                    target: selectedCheckboxSkip.dataset.skip
+                };
+            }
+            
+            // Select dropdowns with data-go-to
             const selectedOption = currentStep.querySelector('select option:checked[data-go-to]');
             if (selectedOption) {
                 return {
@@ -3493,6 +3587,17 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     element: selectedOption,
                     value: selectedOption.value,
                     target: selectedOption.dataset.goTo
+                };
+            }
+            
+            // Select dropdowns with data-skip
+            const selectedOptionSkip = currentStep.querySelector('select option:checked[data-skip]');
+            if (selectedOptionSkip) {
+                return {
+                    type: 'select-skip',
+                    element: selectedOptionSkip,
+                    value: selectedOptionSkip.value,
+                    target: selectedOptionSkip.dataset.skip
                 };
             }
             
@@ -3519,6 +3624,10 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 '[data-form="next-btn"][data-go-to]',
                 'a[data-go-to]',
                 '.next-btn[data-go-to]',
+                'button[data-skip]',
+                'a[data-skip]',
+                '.skip-btn[data-skip]',
+                '[data-skip]',
                 '[data-go-to]'
             ];
             
@@ -3529,7 +3638,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         type: 'step-item-child',
                         source: visibleStepItem.dataset.answer,
                         element: navElement,
-                        target: navElement.dataset.goTo
+                        target: navElement.dataset.goTo || navElement.dataset.skip
                     };
                 }
             }
