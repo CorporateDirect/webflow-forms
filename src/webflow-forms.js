@@ -3172,6 +3172,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Initialize custom error validation system
                 this.initCustomErrorValidation(form);
                 
+                // Initialize radio button formatting system
+                this.initRadioButtonFormatting(form);
+                
                 console.log('Modular branching logic initialized successfully');
                 console.log(`Detected ${patterns.members.length} member patterns, ${patterns.managers.length} manager patterns, ${patterns.other.length} other patterns`);
                 
@@ -4578,6 +4581,463 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             } catch (error) {
                 console.warn('Error triggering custom event:', eventName, error);
             }
+        },
+
+        // Radio Button Formatting System
+        // =================================
+
+        // Initialize radio button formatting
+        initRadioButtonFormatting: function(form) {
+            console.log('🎨 Initializing radio button formatting system...');
+            
+            // Find all radio button containers
+            const radioButtons = form.querySelectorAll('.form_radio-icon, .radio_button-skip-step, .radio_icon');
+            
+            console.log(`Found ${radioButtons.length} radio buttons to format`);
+            
+            radioButtons.forEach((radioButton, index) => {
+                this.formatRadioButton(radioButton, index);
+            });
+            
+            // Add global radio button styles
+            this.addRadioButtonStyles();
+            
+            // Setup radio button interactions
+            this.setupRadioButtonInteractions(form);
+            
+            console.log('✅ Radio button formatting system initialized');
+        },
+
+        // Format individual radio button
+        formatRadioButton: function(radioButton, index) {
+            const radioInput = radioButton.parentElement.querySelector('input[type="radio"]');
+            const radioLabel = radioButton.parentElement.querySelector('.form_radio-label, .radio_label');
+            
+            if (!radioInput) {
+                console.warn(`No radio input found for button ${index}`);
+                return;
+            }
+            
+            const radioId = radioInput.id || `radio-${index}`;
+            const radioName = radioInput.name || 'unnamed';
+            const radioValue = radioInput.value || '';
+            
+            // Add data attributes for tracking
+            radioButton.dataset.radioId = radioId;
+            radioButton.dataset.radioName = radioName;
+            radioButton.dataset.radioValue = radioValue;
+            radioButton.dataset.formatted = 'true';
+            
+            // Add enhanced classes
+            radioButton.classList.add('wf-radio-enhanced');
+            
+            // Add accessibility attributes
+            radioButton.setAttribute('role', 'radio');
+            radioButton.setAttribute('aria-checked', radioInput.checked ? 'true' : 'false');
+            radioButton.setAttribute('tabindex', radioInput.checked ? '0' : '-1');
+            
+            if (radioLabel) {
+                const labelText = radioLabel.textContent.trim();
+                radioButton.setAttribute('aria-label', labelText);
+            }
+            
+            // Add ripple effect container
+            if (!radioButton.querySelector('.wf-radio-ripple')) {
+                const rippleContainer = document.createElement('div');
+                rippleContainer.className = 'wf-radio-ripple';
+                radioButton.appendChild(rippleContainer);
+            }
+            
+            console.log(`✅ Formatted radio button: ${radioId} (${radioName})`);
+        },
+
+        // Add radio button CSS styles
+        addRadioButtonStyles: function() {
+            const styleId = 'wf-radio-button-styles';
+            
+            // Check if styles already added
+            if (document.getElementById(styleId)) {
+                return;
+            }
+            
+            const styles = `
+                <style id="${styleId}">
+                /* Enhanced Radio Button Styles */
+                .wf-radio-enhanced {
+                    position: relative;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    overflow: hidden;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+                
+                .wf-radio-enhanced:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                    border-color: #8B7355 !important;
+                }
+                
+                .wf-radio-enhanced:active {
+                    transform: translateY(0);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                
+                /* Focus styles for accessibility */
+                .wf-radio-enhanced:focus,
+                .wf-radio-enhanced[aria-checked="true"] {
+                    outline: 2px solid #2B231D;
+                    outline-offset: 2px;
+                }
+                
+                /* Checked state enhancement */
+                .wf-radio-enhanced.w--redirected-checked {
+                    background: linear-gradient(135deg, #2B231D 0%, #3D342A 100%);
+                    border-color: #D9D7C4 !important;
+                    box-shadow: 0 2px 8px rgba(43, 35, 29, 0.3);
+                }
+                
+                /* Ripple effect */
+                .wf-radio-ripple {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 0;
+                    height: 0;
+                    background: rgba(43, 35, 29, 0.3);
+                    border-radius: 50%;
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: all 0.6s ease-out;
+                }
+                
+                .wf-radio-ripple.active {
+                    width: 40px;
+                    height: 40px;
+                    opacity: 1;
+                }
+                
+                .wf-radio-ripple.fade {
+                    opacity: 0;
+                }
+                
+                /* Enhanced larger radio buttons */
+                .radio_button-skip-step.wf-radio-enhanced {
+                    border-radius: 8px;
+                    transition: all 0.3s ease;
+                }
+                
+                .radio_button-skip-step.wf-radio-enhanced:hover {
+                    background-color: rgba(43, 35, 29, 0.05);
+                    transform: scale(1.02);
+                }
+                
+                /* Loading state */
+                .wf-radio-enhanced.loading {
+                    opacity: 0.7;
+                    pointer-events: none;
+                }
+                
+                .wf-radio-enhanced.loading::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 12px;
+                    height: 12px;
+                    margin: -6px 0 0 -6px;
+                    border: 2px solid #D9D7C4;
+                    border-top-color: #2B231D;
+                    border-radius: 50%;
+                    animation: wf-radio-spin 1s linear infinite;
+                }
+                
+                @keyframes wf-radio-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                /* Error state styling */
+                .wf-radio-enhanced.field-error {
+                    border-color: #dc3545 !important;
+                    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+                }
+                
+                /* Success state styling */
+                .wf-radio-enhanced.field-success {
+                    border-color: #28a745 !important;
+                    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+                }
+                
+                /* Disabled state */
+                .wf-radio-enhanced:disabled,
+                .wf-radio-enhanced[aria-disabled="true"] {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    pointer-events: none;
+                }
+                
+                /* Group focus management */
+                .radio_component .wf-radio-enhanced[tabindex="0"] {
+                    outline: 2px solid #2B231D;
+                    outline-offset: 2px;
+                }
+                
+                /* Mobile optimizations */
+                @media (max-width: 768px) {
+                    .wf-radio-enhanced {
+                        min-width: 20px;
+                        min-height: 20px;
+                    }
+                    
+                    .wf-radio-enhanced:hover {
+                        transform: none;
+                    }
+                }
+                </style>
+            `;
+            
+            document.head.insertAdjacentHTML('beforeend', styles);
+            console.log('📱 Radio button styles added to document');
+        },
+
+        // Setup radio button interactions
+        setupRadioButtonInteractions: function(form) {
+            // Handle click events
+            form.addEventListener('click', (e) => {
+                const radioButton = e.target.closest('.wf-radio-enhanced');
+                if (radioButton) {
+                    this.handleRadioButtonClick(radioButton, e);
+                }
+            });
+            
+            // Handle keyboard navigation
+            form.addEventListener('keydown', (e) => {
+                const radioButton = e.target.closest('.wf-radio-enhanced');
+                if (radioButton) {
+                    this.handleRadioButtonKeyboard(radioButton, e);
+                }
+            });
+            
+            // Handle focus management
+            form.addEventListener('focusin', (e) => {
+                const radioButton = e.target.closest('.wf-radio-enhanced');
+                if (radioButton) {
+                    this.handleRadioButtonFocus(radioButton);
+                }
+            });
+            
+            // Listen for radio input changes
+            form.addEventListener('change', (e) => {
+                if (e.target.type === 'radio') {
+                    this.handleRadioInputChange(e.target);
+                }
+            });
+        },
+
+        // Handle radio button click
+        handleRadioButtonClick: function(radioButton, event) {
+            const radioInput = radioButton.parentElement.querySelector('input[type="radio"]');
+            
+            if (!radioInput || radioInput.disabled) {
+                return;
+            }
+            
+            // Add ripple effect
+            this.addRippleEffect(radioButton, event);
+            
+            // Trigger the radio input
+            if (!radioInput.checked) {
+                radioInput.checked = true;
+                radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            
+            // Add loading state briefly
+            this.addLoadingState(radioButton);
+            
+            console.log(`🎯 Radio button clicked: ${radioButton.dataset.radioId}`);
+        },
+
+        // Handle keyboard navigation
+        handleRadioButtonKeyboard: function(radioButton, event) {
+            const radioInput = radioButton.parentElement.querySelector('input[type="radio"]');
+            const radioGroup = radioButton.closest('.radio_component, .form_radio-2col');
+            
+            if (!radioInput || !radioGroup) return;
+            
+            switch (event.key) {
+                case 'Enter':
+                case ' ':
+                    event.preventDefault();
+                    this.handleRadioButtonClick(radioButton, event);
+                    break;
+                    
+                case 'ArrowDown':
+                case 'ArrowRight':
+                    event.preventDefault();
+                    this.focusNextRadioButton(radioGroup, radioButton);
+                    break;
+                    
+                case 'ArrowUp':
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    this.focusPreviousRadioButton(radioGroup, radioButton);
+                    break;
+            }
+        },
+
+        // Handle focus management
+        handleRadioButtonFocus: function(radioButton) {
+            const radioGroup = radioButton.closest('.radio_component, .form_radio-2col');
+            if (!radioGroup) return;
+            
+            // Remove tabindex from all radio buttons in group
+            const allRadioButtons = radioGroup.querySelectorAll('.wf-radio-enhanced');
+            allRadioButtons.forEach(btn => {
+                btn.setAttribute('tabindex', '-1');
+            });
+            
+            // Set tabindex for focused button
+            radioButton.setAttribute('tabindex', '0');
+        },
+
+        // Handle radio input change
+        handleRadioInputChange: function(radioInput) {
+            const radioButton = radioInput.parentElement.querySelector('.wf-radio-enhanced');
+            const radioGroup = radioInput.closest('.radio_component, .form_radio-2col');
+            
+            if (!radioButton || !radioGroup) return;
+            
+            // Update all radio buttons in the group
+            const allInputs = radioGroup.querySelectorAll('input[type="radio"][name="' + radioInput.name + '"]');
+            
+            allInputs.forEach(input => {
+                const btn = input.parentElement.querySelector('.wf-radio-enhanced');
+                if (btn) {
+                    btn.setAttribute('aria-checked', input.checked ? 'true' : 'false');
+                    btn.setAttribute('tabindex', input.checked ? '0' : '-1');
+                    
+                    if (input.checked) {
+                        btn.classList.add('field-success');
+                        btn.classList.remove('field-error');
+                    }
+                }
+            });
+            
+            console.log(`📻 Radio group updated: ${radioInput.name} = ${radioInput.value}`);
+        },
+
+        // Add ripple effect
+        addRippleEffect: function(radioButton, event) {
+            const ripple = radioButton.querySelector('.wf-radio-ripple');
+            if (!ripple) return;
+            
+            // Reset ripple
+            ripple.classList.remove('active', 'fade');
+            
+            // Trigger ripple
+            setTimeout(() => {
+                ripple.classList.add('active');
+                
+                setTimeout(() => {
+                    ripple.classList.add('fade');
+                    
+                    setTimeout(() => {
+                        ripple.classList.remove('active', 'fade');
+                    }, 600);
+                }, 200);
+            }, 10);
+        },
+
+        // Add loading state
+        addLoadingState: function(radioButton) {
+            radioButton.classList.add('loading');
+            
+            setTimeout(() => {
+                radioButton.classList.remove('loading');
+            }, 300);
+        },
+
+        // Focus next radio button
+        focusNextRadioButton: function(radioGroup, currentButton) {
+            const radioButtons = Array.from(radioGroup.querySelectorAll('.wf-radio-enhanced'));
+            const currentIndex = radioButtons.indexOf(currentButton);
+            const nextIndex = (currentIndex + 1) % radioButtons.length;
+            
+            radioButtons[nextIndex].focus();
+        },
+
+        // Focus previous radio button
+        focusPreviousRadioButton: function(radioGroup, currentButton) {
+            const radioButtons = Array.from(radioGroup.querySelectorAll('.wf-radio-enhanced'));
+            const currentIndex = radioButtons.indexOf(currentButton);
+            const prevIndex = currentIndex === 0 ? radioButtons.length - 1 : currentIndex - 1;
+            
+            radioButtons[prevIndex].focus();
+        },
+
+        // Validate radio button groups
+        validateRadioButtonGroups: function(form) {
+            const radioGroups = new Map();
+            
+            // Group radio buttons by name
+            const radioInputs = form.querySelectorAll('input[type="radio"][required]');
+            radioInputs.forEach(input => {
+                if (!radioGroups.has(input.name)) {
+                    radioGroups.set(input.name, []);
+                }
+                radioGroups.get(input.name).push(input);
+            });
+            
+            let allValid = true;
+            
+            // Validate each group
+            radioGroups.forEach((inputs, groupName) => {
+                const hasSelection = inputs.some(input => input.checked);
+                
+                inputs.forEach(input => {
+                    const radioButton = input.parentElement.querySelector('.wf-radio-enhanced');
+                    if (radioButton) {
+                        if (hasSelection) {
+                            radioButton.classList.remove('field-error');
+                            radioButton.classList.add('field-success');
+                        } else {
+                            radioButton.classList.add('field-error');
+                            radioButton.classList.remove('field-success');
+                            allValid = false;
+                        }
+                    }
+                });
+                
+                console.log(`📋 Radio group "${groupName}" validation: ${hasSelection ? 'VALID' : 'INVALID'}`);
+            });
+            
+            return allValid;
+        },
+
+        // Clear radio button formatting
+        clearRadioButtonFormatting: function(form) {
+            const radioButtons = form.querySelectorAll('.wf-radio-enhanced');
+            
+            radioButtons.forEach(radioButton => {
+                radioButton.classList.remove('wf-radio-enhanced', 'field-error', 'field-success', 'loading');
+                radioButton.removeAttribute('role');
+                radioButton.removeAttribute('aria-checked');
+                radioButton.removeAttribute('aria-label');
+                radioButton.removeAttribute('tabindex');
+                
+                const ripple = radioButton.querySelector('.wf-radio-ripple');
+                if (ripple) {
+                    ripple.remove();
+                }
+            });
+            
+            // Remove styles
+            const styleElement = document.getElementById('wf-radio-button-styles');
+            if (styleElement) {
+                styleElement.remove();
+            }
+            
+            console.log('🧹 Radio button formatting cleared');
         }
     };
 
