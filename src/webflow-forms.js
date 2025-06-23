@@ -4841,6 +4841,41 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             console.log(`🧹 Removed error styling from ${fieldType}: ${fieldId}`);
         },
 
+        // Helper function to check if a field is required for current subtype
+        isFieldRequiredForCurrentSubtype: function(field, requiredForSubtypes) {
+            // Find the current member subtype context
+            const stepItem = field.closest('.step_item');
+            if (!stepItem) return false;
+            
+            // Check if this step item is currently active/visible
+            const isVisible = stepItem.offsetParent !== null;
+            if (!isVisible) return false;
+            
+            // Get the subtype from the step item's data-answer attribute or data-member-subtype
+            let currentSubtype = stepItem.getAttribute('data-answer');
+            if (!currentSubtype) {
+                const subtypeElement = stepItem.querySelector('[data-member-subtype]');
+                if (subtypeElement) {
+                    currentSubtype = subtypeElement.getAttribute('data-member-subtype');
+                }
+            }
+            
+            if (!currentSubtype) return false;
+            
+            // Extract the subtype (individual, entity, trust) from the answer
+            if (currentSubtype.includes('individual')) {
+                currentSubtype = 'individual';
+            } else if (currentSubtype.includes('entity')) {
+                currentSubtype = 'entity';
+            } else if (currentSubtype.includes('trust')) {
+                currentSubtype = 'trust';
+            }
+            
+            // Check if the field is required for this subtype
+            const requiredSubtypes = requiredForSubtypes.split(',').map(s => s.trim());
+            return requiredSubtypes.includes(currentSubtype);
+        },
+
         // Validate all fields in current step
         validateCurrentStep: function(showErrors = true) {
             if (!this.branchingState.currentStep) {
@@ -4860,6 +4895,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 if (!isFieldValid) {
                     allValid = false;
                     invalidFields.push(field);
+                }
+            });
+            
+            // Validate conditional required fields (data-require-for-subtypes)
+            const conditionalFields = this.branchingState.currentStep.querySelectorAll('[data-require-for-subtypes]:not([type="radio"])');
+            conditionalFields.forEach(field => {
+                const requiredForSubtypes = field.getAttribute('data-require-for-subtypes');
+                if (requiredForSubtypes && this.isFieldRequiredForCurrentSubtype(field, requiredForSubtypes)) {
+                    const isFieldValid = this.validateField(field, showErrors);
+                    if (!isFieldValid) {
+                        allValid = false;
+                        invalidFields.push(field);
+                    }
                 }
             });
             
@@ -5151,6 +5199,41 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             if (hiddenCount > 0) {
                 console.log(`🧹 Hidden ${hiddenCount} error elements in current step`);
             }
+        },
+
+        // Helper function to check if a field is required for current subtype
+        isFieldRequiredForCurrentSubtype: function(field, requiredForSubtypes) {
+            // Find the current member subtype context
+            const stepItem = field.closest('.step_item');
+            if (!stepItem) return false;
+            
+            // Check if this step item is currently active/visible
+            const isVisible = stepItem.offsetParent !== null;
+            if (!isVisible) return false;
+            
+            // Get the subtype from the step item's data-answer attribute or data-member-subtype
+            let currentSubtype = stepItem.getAttribute('data-answer');
+            if (!currentSubtype) {
+                const subtypeElement = stepItem.querySelector('[data-member-subtype]');
+                if (subtypeElement) {
+                    currentSubtype = subtypeElement.getAttribute('data-member-subtype');
+                }
+            }
+            
+            if (!currentSubtype) return false;
+            
+            // Extract the subtype (individual, entity, trust) from the answer
+            if (currentSubtype.includes('individual')) {
+                currentSubtype = 'individual';
+            } else if (currentSubtype.includes('entity')) {
+                currentSubtype = 'entity';
+            } else if (currentSubtype.includes('trust')) {
+                currentSubtype = 'trust';
+            }
+            
+            // Check if the field is required for this subtype
+            const requiredSubtypes = requiredForSubtypes.split(',').map(s => s.trim());
+            return requiredSubtypes.includes(currentSubtype);
         }
     };
 
