@@ -1,504 +1,4 @@
-// Import libphonenumber for dynamic phone formatting and country data
-import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountryCallingCode } from 'libphonenumber-js';
-
-const WebflowFieldEnhancer = {
-    version: '1.1.0',
-    
-    config: {
-        autoInit: true,
-        enhancedClass: 'wf-field-enhanced',
-        focusClass: 'wf-field-focus',
-        typingClass: 'wf-field-typing'
-    },
-
-    // Cache for country data and phone formatting
-    countryDataCache: null,
-    phoneFormatCache: new Map(),
-
-    // Clear all caches
-    clearCaches: function() {
-        this.countryDataCache = null;
-        this.phoneFormatCache.clear();
-    },
-
-    // Get flag emoji for country ISO code
-    getCountryFlag: function(isoCode) {
-        if (!isoCode || isoCode.length !== 2) return '';
-        
-        // Convert ISO country code to flag emoji
-        return isoCode.toUpperCase().replace(/./g, char => 
-            String.fromCodePoint(char.charCodeAt(0) + 127397)
-        );
-    },
-
-    // Generate country data from libphonenumber with proper country names
-    getCountryCodes: function() {
-        // Return cached data if available
-        if (this.countryDataCache) {
-            return this.countryDataCache;
-        }
-
-        try {
-            const countries = getCountries();
-            const countryData = [];
-
-            // Comprehensive country name mapping
-            const countryNames = {
-                'US': 'United States',
-                'GB': 'United Kingdom',
-                'CA': 'Canada',
-                'AU': 'Australia',
-                'DE': 'Germany',
-                'FR': 'France',
-                'IT': 'Italy',
-                'ES': 'Spain',
-                'NL': 'Netherlands',
-                'BE': 'Belgium',
-                'CH': 'Switzerland',
-                'AT': 'Austria',
-                'SE': 'Sweden',
-                'NO': 'Norway',
-                'DK': 'Denmark',
-                'FI': 'Finland',
-                'IE': 'Ireland',
-                'PT': 'Portugal',
-                'GR': 'Greece',
-                'PL': 'Poland',
-                'CZ': 'Czech Republic',
-                'HU': 'Hungary',
-                'JP': 'Japan',
-                'KR': 'South Korea',
-                'CN': 'China',
-                'IN': 'India',
-                'BR': 'Brazil',
-                'MX': 'Mexico',
-                'RU': 'Russia',
-                'ZA': 'South Africa',
-                'EG': 'Egypt',
-                'NG': 'Nigeria',
-                'IL': 'Israel',
-                'AE': 'United Arab Emirates',
-                'SA': 'Saudi Arabia',
-                'TR': 'Turkey',
-                'NZ': 'New Zealand'
-                // Add more as needed
-            };
-
-            for (const countryCode of countries) {
-                try {
-                    const callingCode = getCountryCallingCode(countryCode);
-                    
-                    countryData.push({
-                        name: countryNames[countryCode] || countryCode,
-                        countryCode: `+${callingCode}`,
-                        isoCode: countryCode,
-                        flag: this.getCountryFlag(countryCode)
-                    });
-                } catch (error) {
-                    console.warn(`Country ${countryCode} caused an error and was skipped:`, error);
-                    continue;
-                }
-            }
-
-            // Sort with US first, then alphabetically
-            countryData.sort((a, b) => {
-                if (a.isoCode === 'US') return -1;
-                if (b.isoCode === 'US') return 1;
-                return a.name.localeCompare(b.name);
-            });
-
-            // Cache the result
-            this.countryDataCache = countryData;
-            return countryData;
-
-        } catch (error) {
-            console.error('Could not generate country data from libphonenumber:', error);
-            // Return minimal fallback data
-            return [
-                { name: 'United States', countryCode: '+1', isoCode: 'US', flag: this.getCountryFlag('US') },
-                { name: 'United Kingdom', countryCode: '+44', isoCode: 'GB', flag: this.getCountryFlag('GB') }
-            ];
-        }
-    },
-
-    // Setup country code select field - SIMPLIFIED AND FIXED
-    setupCountryCodeSelect: function(field) {
-        console.log('Setting up country code select for:', field.id || field.name);
-        
-        // Validate the field
-        if (!field || field.tagName !== 'SELECT') {
-            console.error('Invalid field passed to setupCountryCodeSelect:', field);
-            return;
-        }
-
-        try {
-            // Check if searchable option is enabled (default to searchable unless explicitly disabled)
-            const isSearchable = field.dataset.countrySearchable !== 'false';
-            
-            if (isSearchable) {
-                this.createSearchableCountrySelect(field);
-            } else {
-                this.createStandardCountrySelect(field);
-            }
-        } catch (error) {
-            console.error('Error setting up country code select:', error);
-            // Fallback to standard select
-            this.createStandardCountrySelect(field);
-        }
-    },
-
-    // Create standard (non-searchable) country select - SIMPLIFIED
-    createStandardCountrySelect: function(field) {
-        console.log('Creating standard country select');
-        
-        try {
-            // Get the placeholder option if it exists
-            const existingOptions = field.querySelectorAll('option');
-            const placeholderOption = existingOptions[0];
-            
-            // Clear all options
-            field.innerHTML = '';
-            
-            // Re-add placeholder if it was a proper placeholder
-            if (placeholderOption && 
-                (placeholderOption.value === '' || 
-                 placeholderOption.textContent.trim() === '' || 
-                 placeholderOption.hasAttribute('disabled') ||
-                 placeholderOption.hasAttribute('selected'))) {
-                field.appendChild(placeholderOption);
-            }
-            
-            // Populate with country options
-            this.populateCountryOptions(field);
-            
-            console.log(`Standard country select created with ${field.options.length} options`);
-            
-        } catch (error) {
-            console.error('Error creating standard country select:', error);
-        }
-    },
-
-    // Create searchable country select - HEAVILY SIMPLIFIED AND FIXED
-    createSearchableCountrySelect: function(field) {
-        console.log('Creating searchable country select');
-        
-        try {
-            // Store original field properties
-            const fieldName = field.name;
-            const fieldId = field.id;
-            const fieldClass = field.className;
-            const isRequired = field.required;
-            const placeholder = this.getPlaceholderText(field);
-            
-            // Create wrapper container
-            const container = this.createDropdownContainer();
-            
-            // Create search input
-            const searchInput = this.createSearchInput(fieldClass, placeholder, fieldId);
-            
-            // Create hidden select for form submission
-            const hiddenSelect = this.createHiddenSelect(fieldName, fieldId, isRequired);
-            
-            // Create dropdown list
-            const dropdownList = this.createDropdownList();
-            
-            // Insert container before original field
-            field.parentNode.insertBefore(container, field);
-            
-            // Add elements to container
-            container.appendChild(searchInput);
-            container.appendChild(hiddenSelect);
-            container.appendChild(dropdownList);
-            
-            // Get countries data
-            const countries = this.getFormattedCountries(field);
-            
-            // Populate dropdown options
-            this.populateSearchableDropdown(dropdownList, hiddenSelect, countries);
-            
-            // Add event listeners
-            this.attachSearchableEvents(searchInput, dropdownList, hiddenSelect, countries, field);
-            
-            // Remove original field
-            field.remove();
-            
-            // Trigger setup event
-            this.triggerCustomEvent(searchInput, 'countryCodeSetup', { 
-                searchable: true,
-                countriesCount: countries.length 
-            });
-            
-            console.log(`Searchable country select created with ${countries.length} countries`);
-            
-        } catch (error) {
-            console.error('Error creating searchable country select:', error);
-            // Fallback to standard select
-            this.createStandardCountrySelect(field);
-        }
-    },
-
-    // Helper method to get placeholder text
-    getPlaceholderText: function(field) {
-        const disabledOption = field.querySelector('option[disabled]');
-        return disabledOption?.textContent || field.placeholder || 'Select or search for a country...';
-    },
-
-    // Helper method to create dropdown container
-    createDropdownContainer: function() {
-        const container = document.createElement('div');
-        container.dataset.countrySelectContainer = 'true';
-        container.style.position = 'relative';
-        return container;
-    },
-
-    // Helper method to create search input
-    createSearchInput: function(fieldClass, placeholder, fieldId) {
-        const searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.className = fieldClass;
-        searchInput.placeholder = placeholder;
-        searchInput.autocomplete = 'off';
-        searchInput.dataset.countrySearch = 'true';
-        
-        if (fieldId) {
-            searchInput.id = fieldId + '_search';
-        }
-        
-        return searchInput;
-    },
-
-    // Helper method to create hidden select
-    createHiddenSelect: function(fieldName, fieldId, isRequired) {
-        const hiddenSelect = document.createElement('select');
-        hiddenSelect.name = fieldName;
-        hiddenSelect.required = isRequired;
-        hiddenSelect.style.display = 'none';
-        
-        if (fieldId) {
-            hiddenSelect.id = fieldId;
-        }
-        
-        // Add empty option
-        const emptyOption = document.createElement('option');
-        emptyOption.value = '';
-        hiddenSelect.appendChild(emptyOption);
-        
-        return hiddenSelect;
-    },
-
-    // Helper method to create dropdown list
-    createDropdownList: function() {
-        const dropdownList = document.createElement('div');
-        dropdownList.dataset.countryDropdown = 'true';
-        dropdownList.style.cssText = `
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            width: 100%;
-            background: white;
-            border: 1px solid #ccc;
-            border-top: none;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            box-sizing: border-box;
-        `;
-        return dropdownList;
-    },
-
-    // Get formatted countries data - SIMPLIFIED
-    getFormattedCountries: function(field) {
-        const countries = this.getCountryCodes();
-        const displayFormat = field.dataset.countryFormat || 'flag-code';
-        const valueType = field.dataset.countryValue || 'code';
-        
-        return countries.map(country => {
-            let displayText = this.formatCountryDisplay(country, displayFormat);
-            let value = this.formatCountryValue(country, valueType);
-            
-            return {
-                ...country,
-                displayText,
-                value,
-                searchText: `${country.name} ${country.countryCode}`.toLowerCase()
-            };
-        });
-    },
-
-    // Format country display text
-    formatCountryDisplay: function(country, format) {
-        switch (format) {
-            case 'name': return country.name;
-            case 'code': return country.countryCode;
-            case 'name-code': return `${country.name} (${country.countryCode})`;
-            case 'flag-name-code': return `${country.flag} ${country.name} (${country.countryCode})`;
-            case 'flag-code':
-            default: return `${country.flag} ${country.countryCode}`;
-        }
-    },
-
-    // Format country value
-    formatCountryValue: function(country, valueType) {
-        switch (valueType) {
-            case 'name': return country.name;
-            case 'full': return `${country.name} (${country.countryCode})`;
-            case 'code':
-            default: return country.countryCode;
-        }
-    },
-
-    // Populate standard country options
-    populateCountryOptions: function(field) {
-        try {
-            const countries = this.getFormattedCountries(field);
-            
-            countries.forEach(country => {
-                const option = document.createElement('option');
-                option.value = country.value;
-                option.textContent = country.displayText;
-                option.dataset.countryName = country.name;
-                option.dataset.countryCode = country.countryCode;
-                option.dataset.countryFlag = country.flag;
-                
-                field.appendChild(option);
-            });
-            
-            // Trigger setup event
-            this.triggerCustomEvent(field, 'countryCodeSetup', { 
-                searchable: false,
-                countriesCount: countries.length 
-            });
-            
-        } catch (error) {
-            console.error('Error populating country options:', error);
-        }
-    },
-
-    // Populate searchable dropdown - SIMPLIFIED
-    populateSearchableDropdown: function(dropdownList, hiddenSelect, countries) {
-        try {
-            dropdownList.innerHTML = '';
-            
-            countries.forEach(country => {
-                // Create dropdown option
-                const option = this.createDropdownOption(country);
-                dropdownList.appendChild(option);
-                
-                // Create hidden select option
-                const selectOption = this.createSelectOption(country);
-                hiddenSelect.appendChild(selectOption);
-            });
-            
-        } catch (error) {
-            console.error('Error populating searchable dropdown:', error);
-        }
-    },
-
-    // Create dropdown option element
-    createDropdownOption: function(country) {
-        const option = document.createElement('div');
-        option.dataset.countryOption = 'true';
-        option.textContent = country.displayText;
-        option.dataset.value = country.value;
-        option.dataset.countryName = country.name;
-        option.dataset.countryCode = country.countryCode;
-        option.dataset.countryFlag = country.flag;
-        
-        option.style.cssText = `
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        `;
-        
-        // Add hover effects
-        option.addEventListener('mouseenter', () => {
-            option.style.backgroundColor = '#f5f5f5';
-        });
-        
-        option.addEventListener('mouseleave', () => {
-            option.style.backgroundColor = '';
-        });
-        
-        return option;
-    },
-
-    // Create select option element
-    createSelectOption: function(country) {
-        const selectOption = document.createElement('option');
-        selectOption.value = country.value;
-        selectOption.textContent = country.displayText;
-        selectOption.dataset.countryName = country.name;
-        selectOption.dataset.countryCode = country.countryCode;
-        selectOption.dataset.countryFlag = country.flag;
-        
-        return selectOption;
-    },
-
-    // Trigger custom events - UTILITY METHOD
-    triggerCustomEvent: function(element, eventName, detail = {}) {
-        try {
-            const event = new CustomEvent(`webflowField:${eventName}`, {
-                bubbles: true,
-                detail: { ...detail, field: element }
-            });
-            element.dispatchEvent(event);
-        } catch (error) {
-            console.warn('Error triggering custom event:', eventName, error);
-        }
-    },
-
-    // Main initialization method
-    init: function(options = {}) {
-        this.config = Object.assign({}, this.config, options);
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupFields());
-        } else {
-            this.setupFields();
-        }
-    },
-
-    // Setup all form fields
-    setupFields: function() {
-        try {
-            const fields = document.querySelectorAll('form[data-name] input, form[data-name] textarea, form[data-name] select');
-            
-            fields.forEach(field => {
-                // Country code selector
-                if (field.dataset.countryCode === 'true' && field.tagName === 'SELECT') {
-                    this.setupCountryCodeSelect(field);
-                }
-                
-                // Add other field setups here...
-            });
-            
-            console.log(`WebflowForms initialized - processed ${fields.length} fields`);
-            
-        } catch (error) {
-            console.error('Error setting up fields:', error);
-        }
-    }
-};
-
-// Auto-initialize if config allows
-if (WebflowFieldEnhancer.config.autoInit) {
-    WebflowFieldEnhancer.init();
-}
-
-// Export for both CommonJS and browser environments
-if (typeof window !== 'undefined') {
-    window.WebflowFieldEnhancer = WebflowFieldEnhancer;
-    window.WebflowForms = WebflowFieldEnhancer;
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = WebflowFieldEnhancer;
-}
-
-export default WebflowFieldEnhancer; /**
+/**
  * Tryformly-Compatible Multi-Step Form System
  * Drop-in replacement for tryformly.com with exact data attribute compatibility
  * Integrates with existing webflow-forms field enhancements
@@ -532,12 +32,9 @@ export default WebflowFieldEnhancer; /**
             this.hideAllStepsImmediately();
             this.initializeForms();
             this.setupEventListeners();
-            console.log('🎯 Tryformly-compatible system initialized');
-        }
+            }
         
         hideAllStepsImmediately() {
-            console.log('🔍 CLASS HIDING: Starting hideAllStepsImmediately, DOM state:', document.readyState);
-            
             // Find and hide all potential steps immediately, before form initialization
             const stepSelectors = [
                 '[data-form="step"]',
@@ -552,29 +49,22 @@ export default WebflowFieldEnhancer; /**
             
             stepSelectors.forEach(selector => {
                 const steps = document.querySelectorAll(selector);
-                console.log(`🔍 CLASS: Selector "${selector}" found ${steps.length} elements`);
-                
                 steps.forEach((step, index) => {
-                    console.log(`🔍 CLASS: Processing step ${index + 1}:`, step);
-                    console.log(`🔍 CLASS: Current computed styles:`, window.getComputedStyle(step).display);
+                    .display);
                     
                     step.style.display = 'none';
                     step.style.visibility = 'hidden';
                     step.classList.add('step-hidden');
                     step.classList.add('class-hidden');
                     
-                    console.log(`🔍 CLASS: After hiding - inline display:`, step.style.display);
-                    console.log(`🔍 CLASS: After hiding - computed display:`, window.getComputedStyle(step).display);
+                    .display);
                     
                     totalFound++;
                 });
             });
             
-            console.log(`🔒 CLASS HIDING: Pre-hidden ${totalFound} potential steps`);
-            
             if (totalFound === 0) {
-                console.warn('⚠️ CLASS HIDING: No steps found during class initialization!');
-            }
+                }
         }
         
         initializeForms() {
@@ -602,7 +92,6 @@ export default WebflowFieldEnhancer; /**
             const steps = this.findSteps(form);
             
             if (steps.length === 0) {
-                console.warn('No steps found in form:', form);
                 return;
             }
             
@@ -620,8 +109,7 @@ export default WebflowFieldEnhancer; /**
             // Initialize form state
             this.initializeFormState(formId);
             
-            console.log(`✅ Form ${formId} initialized with ${steps.length} steps`);
-        }
+            }
         
         findSteps(form) {
             // Multiple selectors for step detection (tryformly compatibility)
@@ -640,13 +128,11 @@ export default WebflowFieldEnhancer; /**
             for (const selector of selectors) {
                 steps = Array.from(form.querySelectorAll(selector));
                 if (steps.length > 0) {
-                    console.log(`📋 Found ${steps.length} steps using selector: ${selector}`);
                     break;
                 }
             }
             
             if (steps.length === 0) {
-                console.warn('❌ No steps found in form. Tried selectors:', selectors);
                 return [];
             }
             
@@ -679,42 +165,31 @@ export default WebflowFieldEnhancer; /**
         }
         
         initializeFormState(formId) {
-            console.log(`🔍 FORM INIT: Starting initializeFormState for ${formId}`);
-            
             const formData = this.forms.get(formId);
             if (!formData) {
-                console.warn(`⚠️ FORM INIT: No form data found for ${formId}`);
                 return;
             }
             
-            console.log(`🔍 FORM INIT: Form has ${formData.steps.length} steps`);
-            
             // Hide all steps immediately, then show first
             formData.steps.forEach((step, index) => {
-                console.log(`🔍 FORM INIT: Hiding step ${index + 1}:`, step);
-                console.log(`🔍 FORM INIT: Step ${index + 1} classes before hide:`, step.className);
-                console.log(`🔍 FORM INIT: Step ${index + 1} computed display before:`, window.getComputedStyle(step).display);
+                .display);
                 
                 this.hideStep(step);  // Hide all first
                 
-                console.log(`🔍 FORM INIT: Step ${index + 1} classes after hide:`, step.className);
-                console.log(`🔍 FORM INIT: Step ${index + 1} computed display after:`, window.getComputedStyle(step).display);
+                .display);
             });
             
             // Show first step
             if (formData.steps.length > 0) {
-                console.log(`🔍 FORM INIT: Showing first step:`, formData.steps[0]);
                 this.showStep(formData.steps[0]);
-                console.log(`🔍 FORM INIT: First step classes after show:`, formData.steps[0].className);
-                console.log(`🔍 FORM INIT: First step computed display after show:`, window.getComputedStyle(formData.steps[0]).display);
+                .display);
             }
             
             this.updateProgress(formId);
             this.updateNavigation(formId);
             this.processConditionalLogic(formId);
             
-            console.log(`✅ FORM INIT: Completed initialization for ${formId}`);
-        }
+            }
         
         setupEventListeners() {
             // Use event delegation for better performance
@@ -727,10 +202,7 @@ export default WebflowFieldEnhancer; /**
             const target = e.target;
             const formId = this.getFormId(target);
             
-            console.log(`🔍 CLICK: Element clicked:`, target);
-            console.log(`🔍 CLICK: Form ID: ${formId}`);
-            console.log(`🔍 CLICK: Element attributes:`, {
-                'data-go-to': target.getAttribute('data-go-to'),
+            ,
                 'data-answer': target.getAttribute('data-answer'),
                 'data-next': target.getAttribute('data-next'),
                 'data-form': target.getAttribute('data-form'),
@@ -738,7 +210,6 @@ export default WebflowFieldEnhancer; /**
             });
             
             if (!formId) {
-                console.warn(`⚠️ CLICK: No form ID found for clicked element`);
                 return;
             }
             
@@ -746,7 +217,6 @@ export default WebflowFieldEnhancer; /**
             const now = Date.now();
             const lastClick = target._lastClickTime || 0;
             if (now - lastClick < 500) {
-                console.log(`🚫 CLICK: Debounced double-click`);
                 e.preventDefault();
                 return;
             }
@@ -758,36 +228,28 @@ export default WebflowFieldEnhancer; /**
             
             if (target.type === 'radio') {
                 radioInput = target;
-                console.log(`📻 CLICK: Direct radio button click`);
-            } else if (target.tagName === 'LABEL') {
+                } else if (target.tagName === 'LABEL') {
                 // Find associated radio button
                 const forAttr = target.getAttribute('for');
                 if (forAttr) {
                     radioInput = document.getElementById(forAttr);
-                    console.log(`📻 CLICK: Label click, found radio:`, radioInput);
-                } else {
+                    } else {
                     // Look for radio inside label
                     radioInput = target.querySelector('input[type="radio"]');
-                    console.log(`📻 CLICK: Label click, radio inside:`, radioInput);
-                }
+                    }
             } else {
                 // Check if clicked element is inside a radio container
                 const radioContainer = target.closest('.radio_field, .w-radio, [data-go-to]');
                 if (radioContainer) {
                     radioInput = radioContainer.querySelector('input[type="radio"]');
-                    console.log(`📻 CLICK: Container click, found radio:`, radioInput);
-                }
+                    }
             }
             
             // If we found a radio input, handle it specially
             if (radioInput) {
-                console.log(`📻 CLICK: Processing radio button:`, radioInput);
-                
                 // Ensure the radio gets selected
                 if (!radioInput.checked) {
                     radioInput.checked = true;
-                    console.log(`📻 CLICK: Selected radio button`);
-                    
                     // Trigger change event to save data
                     radioInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
@@ -796,13 +258,10 @@ export default WebflowFieldEnhancer; /**
                 parentWithAttributes = this.findElementWithGoToAttributes(radioInput);
                 
                 if (parentWithAttributes) {
-                    console.log(`📻 CLICK: Found element with data attributes:`, parentWithAttributes);
                     const goTo = parentWithAttributes.getAttribute('data-go-to');
                     const answer = parentWithAttributes.getAttribute('data-answer');
                     
                     if (goTo) {
-                        console.log(`📻 CLICK: Radio has data-go-to="${goTo}" and data-answer="${answer}"`);
-                        
                         // Create a temporary element with the attributes for handleGoTo
                         const tempElement = {
                             getAttribute: (attr) => parentWithAttributes.getAttribute(attr),
@@ -825,17 +284,14 @@ export default WebflowFieldEnhancer; /**
             
             // Navigation buttons (tryformly data attributes)
             if (this.isNextButton(target)) {
-                console.log(`➡️ CLICK: Next button clicked`);
                 e.preventDefault();
                 e.stopPropagation();
                 this.nextStep(formId);
             } else if (this.isPrevButton(target)) {
-                console.log(`⬅️ CLICK: Prev button clicked`);
                 e.preventDefault();
                 e.stopPropagation();
                 this.prevStep(formId);
             } else if (this.isSubmitButton(target)) {
-                console.log(`📤 CLICK: Submit button clicked`);
                 e.preventDefault();
                 e.stopPropagation();
                 this.submitForm(formId);
@@ -843,7 +299,6 @@ export default WebflowFieldEnhancer; /**
             
             // Conditional navigation (data-go-to)
             else if (target.hasAttribute('data-go-to')) {
-                console.log(`🎯 CLICK: Element with data-go-to clicked`);
                 e.preventDefault();
                 e.stopPropagation();
                 this.handleGoTo(formId, target);
@@ -851,15 +306,13 @@ export default WebflowFieldEnhancer; /**
             
             // Skip functionality (data-skip)
             else if (target.hasAttribute('data-skip')) {
-                console.log(`⏭️ CLICK: Element with data-skip clicked`);
                 e.preventDefault();
                 e.stopPropagation();
                 this.handleSkip(formId, target);
             }
             
             else {
-                console.log(`🔍 CLICK: No special handling for this element`);
-            }
+                }
         }
         
         // Helper method to find element with data-go-to attributes
@@ -898,8 +351,6 @@ export default WebflowFieldEnhancer; /**
             
             if (!formId) return;
             
-            console.log(`🔄 CHANGE: Field changed:`, target);
-            
             // Save field data
             this.saveFieldData(formId, target);
             
@@ -910,12 +361,8 @@ export default WebflowFieldEnhancer; /**
             
             // For radio buttons, also check parent elements for data attributes
             if (target.type === 'radio') {
-                console.log(`📻 CHANGE: Radio button changed, checking for navigation attributes`);
-                
                 const elementWithAttributes = this.findElementWithGoToAttributes(target);
                 if (elementWithAttributes && elementWithAttributes.hasAttribute('data-go-to')) {
-                    console.log(`📻 CHANGE: Found data-go-to on radio element`);
-                    
                     // Create a temporary element with the attributes for conditional logic
                     const tempElement = {
                         getAttribute: (attr) => elementWithAttributes.getAttribute(attr),
@@ -984,20 +431,16 @@ export default WebflowFieldEnhancer; /**
         
         // Core navigation methods
         nextStep(formId) {
-            console.log(`🔍 NEXT STEP: Starting nextStep for ${formId}`);
-            
             const formData = this.forms.get(formId);
             if (!formData) {
-                console.warn(`⚠️ NEXT STEP: No form data found for ${formId}`);
                 return;
             }
             
             const currentStepIndex = this.currentSteps.get(formId);
-            console.log(`🔍 NEXT STEP: Current step index: ${currentStepIndex} (display: ${currentStepIndex + 1})`);
+            `);
             
             // Validate current step
             if (this.config.validateOnNext && !this.validateStep(formId, currentStepIndex)) {
-                console.log('❌ NEXT STEP: Validation failed, staying on current step');
                 return false;
             }
             
@@ -1006,13 +449,11 @@ export default WebflowFieldEnhancer; /**
             
             // Calculate next step (with skip logic)
             const nextStepIndex = this.getNextStepIndex(formId, currentStepIndex);
-            console.log(`🔍 NEXT STEP: Next step index: ${nextStepIndex} (display: ${nextStepIndex + 1})`);
+            `);
             
             if (nextStepIndex < formData.totalSteps) {
-                console.log(`➡️ NEXT STEP: Going to step ${nextStepIndex + 1}`);
                 this.goToStep(formId, nextStepIndex);
             } else {
-                console.log(`🏁 NEXT STEP: Reached end, handling completion`);
                 this.handleComplete(formId);
             }
             
@@ -1028,48 +469,39 @@ export default WebflowFieldEnhancer; /**
         }
         
         goToStep(formId, targetStepIndex, addToHistory = true) {
-            console.log(`🔍 GO TO STEP: Going from step ${this.currentSteps.get(formId) + 1} to step ${targetStepIndex + 1}`);
+            + 1} to step ${targetStepIndex + 1}`);
             
             const formData = this.forms.get(formId);
             if (!formData) {
-                console.warn(`⚠️ GO TO STEP: No form data found for ${formId}`);
                 return;
             }
             
             const currentStepIndex = this.currentSteps.get(formId);
             
             if (targetStepIndex === currentStepIndex) {
-                console.log(`🔍 GO TO STEP: Already on target step ${targetStepIndex + 1}, skipping`);
                 return;
             }
             
             if (targetStepIndex < 0 || targetStepIndex >= formData.totalSteps) {
-                console.warn(`⚠️ GO TO STEP: Invalid step index ${targetStepIndex}, total steps: ${formData.totalSteps}`);
                 return;
             }
-            
-            console.log(`🔍 GO TO STEP: Valid transition from ${currentStepIndex + 1} to ${targetStepIndex + 1}`);
             
             // Add to history for back navigation
             if (addToHistory && targetStepIndex > currentStepIndex) {
                 this.stepHistory.get(formId).push(currentStepIndex);
-                console.log(`📚 GO TO STEP: Added step ${currentStepIndex + 1} to history`);
-            }
+                }
             
             // Hide current step
-            console.log(`🔍 GO TO STEP: Hiding current step ${currentStepIndex + 1}`);
             this.hideStep(formData.steps[currentStepIndex]);
             
             // Show target step after transition
             setTimeout(() => {
-                console.log(`🔍 GO TO STEP: Showing target step ${targetStepIndex + 1}`);
                 this.showStep(formData.steps[targetStepIndex]);
                 this.currentSteps.set(formId, targetStepIndex);
                 this.updateProgress(formId);
                 this.updateNavigation(formId);
                 this.triggerStepChangeEvent(formId, targetStepIndex, currentStepIndex);
-                console.log(`✅ GO TO STEP: Successfully moved to step ${targetStepIndex + 1}`);
-            }, this.config.transitionDuration);
+                }, this.config.transitionDuration);
         }
         
         getNextStepIndex(formId, currentStepIndex) {
@@ -1079,7 +511,6 @@ export default WebflowFieldEnhancer; /**
             // Apply skip logic
             while (nextStepIndex < formData.totalSteps) {
                 if (this.shouldSkipStep(formId, nextStepIndex)) {
-                    console.log(`⏭️ Skipping step ${nextStepIndex + 1}`);
                     nextStepIndex++;
                 } else {
                     break;
@@ -1128,14 +559,10 @@ export default WebflowFieldEnhancer; /**
             const targetStep = element.getAttribute('data-go-to');
             const requiredAnswer = element.getAttribute('data-answer');
             
-            console.log(`🔍 HANDLE GO-TO: Processing data-go-to="${targetStep}" with data-answer="${requiredAnswer}"`);
-            
             // Check if answer matches (if specified)
             if (requiredAnswer) {
                 const elementValue = this.getElementValue(element);
-                console.log(`🔍 HANDLE GO-TO: Element value: "${elementValue}", required: "${requiredAnswer}"`);
                 if (elementValue !== requiredAnswer) {
-                    console.log(`❌ HANDLE GO-TO: Answer doesn't match, not navigating`);
                     return; // Don't navigate if answer doesn't match
                 }
             }
@@ -1146,13 +573,11 @@ export default WebflowFieldEnhancer; /**
                 formData.set('_lastGoTo', targetStep);
                 // Also store the target step value for step-wrapper matching
                 formData.set('_currentNavigation', targetStep);
-                console.log(`🔍 HANDLE GO-TO: Stored navigation data: _lastGoTo="${targetStep}", _currentNavigation="${targetStep}"`);
-            }
+                }
             
             // Handle numeric step navigation (e.g., "2", "3")
             if (/^\d+$/.test(targetStep)) {
                 const targetStepIndex = parseInt(targetStep) - 1; // Convert to 0-based
-                console.log(`🔍 HANDLE GO-TO: Numeric step "${targetStep}" -> index ${targetStepIndex}`);
                 if (targetStepIndex >= 0) {
                     this.goToStep(formId, targetStepIndex);
                 }
@@ -1162,24 +587,18 @@ export default WebflowFieldEnhancer; /**
                 const stepNumber = targetStep.replace('step-', '');
                 if (/^\d+$/.test(stepNumber)) {
                     const targetStepIndex = parseInt(stepNumber) - 1; // Convert to 0-based
-                    console.log(`🔍 HANDLE GO-TO: Named step "${targetStep}" -> step ${stepNumber} -> index ${targetStepIndex}`);
                     if (targetStepIndex >= 0) {
                         this.goToStep(formId, targetStepIndex);
                     }
                 } else {
-                    console.warn(`⚠️ HANDLE GO-TO: Invalid step name format: ${targetStep}`);
-                }
+                    }
             } 
             else {
                 // Handle branch navigation (for step-wrappers)
-                console.log(`🌳 HANDLE GO-TO: Branch navigation to "${targetStep}"`);
-                console.log(`🌳 HANDLE GO-TO: This should go to next step and show wrapper with matching data-answer`);
-                
                 // Store the branch target for wrapper matching
                 if (formData) {
                     formData.set('_branchTarget', targetStep);
-                    console.log(`🌳 HANDLE GO-TO: Stored branch target: "${targetStep}"`);
-                }
+                    }
                 
                 this.nextStep(formId);
             }
@@ -1189,31 +608,23 @@ export default WebflowFieldEnhancer; /**
             const goToStep = field.getAttribute('data-go-to');
             const answerValue = field.getAttribute('data-answer');
             
-            console.log(`🌳 CONDITIONAL: Checking field with data-go-to="${goToStep}", data-answer="${answerValue}"`);
-            
             if (goToStep && answerValue) {
                 const fieldValue = this.getElementValue(field);
-                console.log(`🌳 CONDITIONAL: Field value="${fieldValue}", required answer="${answerValue}"`);
-                
                 // For radio buttons, only proceed if this one is checked
                 if (field.type === 'radio' && !field.checked) {
-                    console.log(`🌳 CONDITIONAL: Radio button not checked, skipping`);
                     return;
                 }
                 
                 // Check if value matches required answer
                 if (fieldValue === answerValue) {
-                    console.log(`🌳 CONDITIONAL: Values match! Triggering navigation to "${goToStep}"`);
                     // Small delay for visual feedback
                     setTimeout(() => {
                         this.handleGoTo(formId, field);
                     }, 100);
                 } else {
-                    console.log(`🌳 CONDITIONAL: Values don't match, no navigation`);
-                }
+                    }
             } else {
-                console.log(`🌳 CONDITIONAL: No conditional logic on this field`);
-            }
+                }
         }
         
         // Skip functionality (data-skip)
@@ -1368,17 +779,22 @@ export default WebflowFieldEnhancer; /**
         
         // Step visibility
         showStep(step) {
-            console.log(`🔍 SHOW STEP: Showing step:`, step);
-            console.log(`🔍 SHOW STEP: Classes before show:`, step.className);
-            console.log(`🔍 SHOW STEP: Computed display before:`, window.getComputedStyle(step).display);
+            .display);
             
-            step.style.display = 'block';
-            step.style.visibility = 'visible';
-            step.style.opacity = '1';
-            step.style.position = 'static';
-            step.style.left = 'auto';
+            // Use setProperty with important to override aggressive hiding CSS
+            step.style.setProperty('display', 'block', 'important');
+            step.style.setProperty('visibility', 'visible', 'important');
+            step.style.setProperty('opacity', '1', 'important');
+            step.style.setProperty('position', 'relative', 'important');
+            step.style.setProperty('left', 'auto', 'important');
+            step.style.setProperty('top', 'auto', 'important');
+            step.style.setProperty('width', 'auto', 'important');
+            step.style.setProperty('height', 'auto', 'important');
+            step.style.setProperty('overflow', 'visible', 'important');
+            step.style.setProperty('pointer-events', 'auto', 'important');
+            step.style.setProperty('z-index', 'auto', 'important');
             
-            // Remove ALL hiding classes
+            // Remove ALL hiding classes and add visible class
             step.classList.remove('step-hidden', 'immediately-hidden', 'class-hidden');
             step.classList.add('step-visible', 'step-enter');
             
@@ -1387,24 +803,17 @@ export default WebflowFieldEnhancer; /**
             hidingClasses.forEach(cls => {
                 if (step.classList.contains(cls)) {
                     step.classList.remove(cls);
-                    console.log(`🔧 SHOW STEP: Force removed class: ${cls}`);
-                }
+                    }
             });
             
-            console.log(`🔍 SHOW STEP: Classes after show:`, step.className);
-            console.log(`🔍 SHOW STEP: Inline styles after:`, {
-                display: step.style.display,
-                visibility: step.style.visibility,
-                opacity: step.style.opacity
-            });
-            console.log(`🔍 SHOW STEP: Computed display after:`, window.getComputedStyle(step).display);
+            .display);
             
             // Debug parent elements that might be hiding the step
             let parent = step.parentElement;
             let level = 1;
             while (parent && level <= 3) {
                 const parentStyles = window.getComputedStyle(parent);
-                console.log(`🔍 SHOW STEP: Parent ${level} (${parent.tagName}.${parent.className}):`, {
+                :`, {
                     display: parentStyles.display,
                     visibility: parentStyles.visibility,
                     opacity: parentStyles.opacity,
@@ -1419,31 +828,10 @@ export default WebflowFieldEnhancer; /**
             // Check if step is actually in viewport
             const rect = step.getBoundingClientRect();
             const computedStyles = window.getComputedStyle(step);
-            console.log(`🔍 SHOW STEP: Element position:`, {
-                top: rect.top,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height,
-                visible: rect.width > 0 && rect.height > 0
-            });
-            
             // Check for visibility blockers
-            console.log(`🔍 SHOW STEP: Potential visibility blockers:`, {
-                zIndex: computedStyles.zIndex,
-                transform: computedStyles.transform,
-                backgroundColor: computedStyles.backgroundColor,
-                color: computedStyles.color,
-                fontSize: computedStyles.fontSize,
-                lineHeight: computedStyles.lineHeight,
-                textIndent: computedStyles.textIndent,
-                clipPath: computedStyles.clipPath,
-                mask: computedStyles.mask
-            });
-            
             // Check what element is actually at the step's position
             const elementAtPosition = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
-            console.log(`🔍 SHOW STEP: Element at step position:`, elementAtPosition);
-            console.log(`🔍 SHOW STEP: Is step the top element?`, elementAtPosition === step || step.contains(elementAtPosition));
+            );
             
             // Handle step-wrappers with data-answer attributes (tryformly branching logic)
             this.showStepWrappers(step);
@@ -1460,11 +848,8 @@ export default WebflowFieldEnhancer; /**
             step.style.border = '5px solid red';
             step.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
             step.style.zIndex = '9999';
-            console.log(`🔧 SHOW STEP: Added red border for visual debugging`);
-            
             // Force visibility as a last resort
             if (rect.width === 0 || rect.height === 0) {
-                console.log(`🔧 SHOW STEP: Step has no dimensions, forcing visibility`);
                 step.style.display = 'block';
                 step.style.visibility = 'visible';
                 step.style.opacity = '1';
@@ -1477,38 +862,27 @@ export default WebflowFieldEnhancer; /**
                 step.offsetHeight;
                 
                 const newRect = step.getBoundingClientRect();
-                console.log(`🔧 SHOW STEP: After force - dimensions:`, {
-                    width: newRect.width,
-                    height: newRect.height
-                });
-            }
+                }
             
-            console.log(`✅ SHOW STEP: Step should now be visible`);
-        }
+            }
         
         hideStep(step) {
-            console.log(`🔍 HIDE STEP: Hiding step:`, step);
-            console.log(`🔍 HIDE STEP: Classes before hide:`, step.className);
-            console.log(`🔍 HIDE STEP: Computed display before:`, window.getComputedStyle(step).display);
+            .display);
             
-            step.style.display = 'none';  // Hide immediately
-            step.style.visibility = 'hidden';
-            step.style.opacity = '0';
-            step.style.position = 'absolute';
-            step.style.left = '-9999px';
+            // Use setProperty with important to ensure hiding overrides any other CSS
+            step.style.setProperty('display', 'none', 'important');
+            step.style.setProperty('visibility', 'hidden', 'important');
+            step.style.setProperty('opacity', '0', 'important');
+            step.style.setProperty('position', 'absolute', 'important');
+            step.style.setProperty('left', '-9999px', 'important');
+            step.style.setProperty('top', '-9999px', 'important');
+            step.style.setProperty('pointer-events', 'none', 'important');
             
             step.classList.remove('step-visible', 'step-enter');
             step.classList.add('step-hidden');
             
-            console.log(`🔍 HIDE STEP: Classes after hide:`, step.className);
-            console.log(`🔍 HIDE STEP: Inline styles after:`, {
-                display: step.style.display,
-                visibility: step.style.visibility,
-                opacity: step.style.opacity
-            });
-            console.log(`🔍 HIDE STEP: Computed display after:`, window.getComputedStyle(step).display);
-            console.log(`✅ HIDE STEP: Step should now be hidden`);
-        }
+            .display);
+            }
         
         // Step-wrapper branching logic (tryformly compatibility)
         showStepWrappers(step) {
@@ -1522,16 +896,12 @@ export default WebflowFieldEnhancer; /**
             const stepWrappers = step.querySelectorAll('[data-answer]');
             
             if (stepWrappers.length === 0) {
-                console.log('📋 STEP WRAPPER: No step-wrappers found in this step');
                 return;
             }
-            
-            console.log(`📋 STEP WRAPPER: Found ${stepWrappers.length} step-wrappers`);
             
             // Hide all step-wrappers initially
             stepWrappers.forEach((wrapper, index) => {
                 const answerValue = wrapper.getAttribute('data-answer');
-                console.log(`📋 STEP WRAPPER: Wrapper ${index + 1} has data-answer="${answerValue}"`);
                 wrapper.style.display = 'none';
                 wrapper.classList.remove('wrapper-visible');
                 wrapper.classList.add('wrapper-hidden');
@@ -1544,7 +914,7 @@ export default WebflowFieldEnhancer; /**
                 activeWrapper.style.display = 'block';
                 activeWrapper.classList.remove('wrapper-hidden');
                 activeWrapper.classList.add('wrapper-visible');
-                console.log(`📋 STEP WRAPPER: Showing wrapper with data-answer="${activeWrapper.getAttribute('data-answer')}"`);
+                }"`);
             } else {
                 // Show first wrapper with empty data-answer (first step wrapper)
                 const firstWrapper = step.querySelector('[data-answer=""]');
@@ -1552,7 +922,7 @@ export default WebflowFieldEnhancer; /**
                     firstWrapper.style.display = 'block';
                     firstWrapper.classList.remove('wrapper-hidden');
                     firstWrapper.classList.add('wrapper-visible');
-                    console.log('📋 STEP WRAPPER: Showing first step wrapper (data-answer="")');
+                    ');
                 } else {
                     // If no empty data-answer wrapper, show the first wrapper
                     const fallbackWrapper = stepWrappers[0];
@@ -1560,7 +930,7 @@ export default WebflowFieldEnhancer; /**
                         fallbackWrapper.style.display = 'block';
                         fallbackWrapper.classList.remove('wrapper-hidden');
                         fallbackWrapper.classList.add('wrapper-visible');
-                        console.log(`📋 STEP WRAPPER: No empty wrapper found, showing first wrapper with data-answer="${fallbackWrapper.getAttribute('data-answer')}"`);
+                        }"`);
                     }
                 }
             }
@@ -1586,13 +956,9 @@ export default WebflowFieldEnhancer; /**
         }
         
         hasMatchingFormValue(formData, answerValue) {
-            console.log(`🔍 WRAPPER MATCH: Checking if form data matches "${answerValue}"`);
-            
             // Check if any form field has this value
             for (const [fieldName, fieldValue] of formData) {
-                console.log(`🔍 WRAPPER MATCH: Field "${fieldName}" = "${fieldValue}"`);
                 if (fieldValue === answerValue) {
-                    console.log(`✅ WRAPPER MATCH: Found match in field "${fieldName}"`);
                     return true;
                 }
             }
@@ -1602,14 +968,10 @@ export default WebflowFieldEnhancer; /**
             const currentNav = formData.get('_currentNavigation');
             const branchTarget = formData.get('_branchTarget');
             
-            console.log(`🔍 WRAPPER MATCH: Navigation data - _lastGoTo="${lastGoTo}", _currentNavigation="${currentNav}", _branchTarget="${branchTarget}"`);
-            
             if (lastGoTo === answerValue || currentNav === answerValue || branchTarget === answerValue) {
-                console.log(`✅ WRAPPER MATCH: Found match in navigation data`);
                 return true;
             }
             
-            console.log(`❌ WRAPPER MATCH: No match found for "${answerValue}"`);
             return false;
         }
         
@@ -2035,17 +1397,13 @@ export default WebflowFieldEnhancer; /**
             `;
             
             document.head.appendChild(style);
-            console.log('🎨 CSS: Injected tryformly-compatible styles');
-            
             // Verify CSS is working by checking a test element
             setTimeout(() => {
                 const testSteps = document.querySelectorAll('[data-form="step"]');
                 if (testSteps.length > 0) {
                     const testStep = testSteps[0];
                     const computedStyle = window.getComputedStyle(testStep);
-                    console.log('🎨 CSS: Test step computed display:', computedStyle.display);
-                    console.log('🎨 CSS: Test step classes:', testStep.className);
-                }
+                    }
             }, 100);
         }
         
@@ -2075,7 +1433,64 @@ export default WebflowFieldEnhancer; /**
 
     // IMMEDIATE step hiding - runs as soon as script loads
     (function hideStepsImmediately() {
-        console.log('🔍 IMMEDIATE HIDING: Script executing, DOM state:', document.readyState);
+        // Inject aggressive CSS immediately to hide steps
+        const immediateStyle = document.createElement('style');
+        immediateStyle.id = 'immediate-step-hiding';
+        immediateStyle.innerHTML = `
+            /* IMMEDIATE HIDING - Maximum specificity to override Webflow */
+            [data-form="step"]:not(.step-visible),
+            [data-step]:not(.step-visible),
+            [data-step-number]:not(.step-visible),
+            [data-form-step]:not(.step-visible),
+            .form-step:not(.step-visible),
+            .step:not(.step-visible) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                pointer-events: none !important;
+                z-index: -1 !important;
+            }
+            
+            /* Ensure step-visible class shows steps */
+            [data-form="step"].step-visible,
+            [data-step].step-visible,
+            [data-step-number].step-visible,
+            [data-form-step].step-visible,
+            .form-step.step-visible,
+            .step.step-visible {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: auto !important;
+                height: auto !important;
+                overflow: visible !important;
+                pointer-events: auto !important;
+                z-index: auto !important;
+            }
+        `;
+        
+        // Insert at the very beginning of head to ensure it loads first
+        if (document.head) {
+            document.head.insertBefore(immediateStyle, document.head.firstChild);
+        } else {
+            // If head doesn't exist yet, wait for it
+            const headObserver = new MutationObserver((mutations, observer) => {
+                if (document.head) {
+                    document.head.insertBefore(immediateStyle, document.head.firstChild);
+                    observer.disconnect();
+                }
+            });
+            headObserver.observe(document.documentElement, { childList: true });
+        }
         
         const stepSelectors = [
             '[data-form="step"]',
@@ -2090,39 +1505,68 @@ export default WebflowFieldEnhancer; /**
         
         stepSelectors.forEach(selector => {
             const steps = document.querySelectorAll(selector);
-            console.log(`🔍 IMMEDIATE: Selector "${selector}" found ${steps.length} elements`);
-            
             steps.forEach((step, index) => {
-                console.log(`🔍 IMMEDIATE: Hiding step ${index + 1} with selector "${selector}":`, step);
-                console.log(`🔍 IMMEDIATE: Step classes before:`, step.className);
-                console.log(`🔍 IMMEDIATE: Step styles before:`, {
-                    display: step.style.display,
-                    visibility: step.style.visibility,
-                    opacity: step.style.opacity
-                });
+                // Remove any step-visible class that might exist
+                step.classList.remove('step-visible');
                 
-                step.style.display = 'none';
-                step.style.visibility = 'hidden';
-                step.style.opacity = '0';
-                step.style.position = 'absolute';
-                step.style.left = '-9999px';
+                // Add aggressive inline styles as backup
+                step.style.setProperty('display', 'none', 'important');
+                step.style.setProperty('visibility', 'hidden', 'important');
+                step.style.setProperty('opacity', '0', 'important');
+                step.style.setProperty('position', 'absolute', 'important');
+                step.style.setProperty('left', '-9999px', 'important');
+                step.style.setProperty('top', '-9999px', 'important');
+                step.style.setProperty('pointer-events', 'none', 'important');
                 step.classList.add('immediately-hidden');
-                
-                console.log(`🔍 IMMEDIATE: Step styles after:`, {
-                    display: step.style.display,
-                    visibility: step.style.visibility,
-                    opacity: step.style.opacity
-                });
                 
                 totalStepsFound++;
             });
         });
         
-        console.log(`⚡ IMMEDIATE HIDING: Processed ${totalStepsFound} total steps`);
-        
         if (totalStepsFound === 0) {
-            console.warn('⚠️ IMMEDIATE HIDING: No steps found! DOM might not be ready or selectors might be wrong');
-            console.log('🔍 IMMEDIATE: Available elements in DOM:', document.querySelectorAll('*').length);
+            .length);
+            
+            // Set up a MutationObserver to catch steps that might be added later
+            const observer = new MutationObserver((mutations) => {
+                let newStepsFound = 0;
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            stepSelectors.forEach(selector => {
+                                if (node.matches && node.matches(selector)) {
+                                    node.classList.remove('step-visible');
+                                    node.style.setProperty('display', 'none', 'important');
+                                    node.style.setProperty('visibility', 'hidden', 'important');
+                                    node.classList.add('immediately-hidden');
+                                    newStepsFound++;
+                                }
+                                // Also check children
+                                const childSteps = node.querySelectorAll && node.querySelectorAll(selector);
+                                if (childSteps) {
+                                    childSteps.forEach(childStep => {
+                                        childStep.classList.remove('step-visible');
+                                        childStep.style.setProperty('display', 'none', 'important');
+                                        childStep.style.setProperty('visibility', 'hidden', 'important');
+                                        childStep.classList.add('immediately-hidden');
+                                        newStepsFound++;
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                if (newStepsFound > 0) {
+                    }
+            });
+            
+            observer.observe(document.body || document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Stop observing after 5 seconds
+            setTimeout(() => observer.disconnect(), 5000);
         }
     })();
 
@@ -2137,8 +1581,7 @@ export default WebflowFieldEnhancer; /**
         window.Formly = tryformlyInstance;
         window.TryformlyCompatible = tryformlyInstance;
         
-        console.log('🎯 Tryformly-compatible system ready');
-    }
+        }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);

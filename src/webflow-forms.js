@@ -3175,6 +3175,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Initialize radio button formatting system
                 this.initRadioButtonFormatting(form);
                 
+                // Initialize dynamic button state management
+                this.initButtonStateManagement(form);
+                
                 console.log('Modular branching logic initialized successfully');
                 console.log(`Detected ${patterns.members.length} member patterns, ${patterns.managers.length} manager patterns, ${patterns.other.length} other patterns`);
                 
@@ -5038,6 +5041,461 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
             
             console.log('🧹 Radio button formatting cleared');
+        },
+
+        // Dynamic Button State Management System
+        // =====================================
+
+        // Initialize button state management
+        initButtonStateManagement: function(form) {
+            console.log('🔘 Initializing dynamic button state management...');
+            
+            // Find all next buttons
+            const nextButtons = form.querySelectorAll('[data-form="next-btn"]');
+            console.log(`Found ${nextButtons.length} next buttons to manage`);
+            
+            // Store button references
+            this.branchingState.nextButtons = Array.from(nextButtons);
+            
+            // Add button state styling
+            this.addButtonStateStyles();
+            
+            // Setup real-time validation listeners
+            this.setupRealTimeValidationListeners(form);
+            
+            // Initial button state check
+            this.updateButtonStates();
+            
+            console.log('✅ Button state management initialized');
+        },
+
+        // Add CSS styles for button states
+        addButtonStateStyles: function() {
+            const styleId = 'wf-button-state-styles';
+            
+            // Check if styles already added
+            if (document.getElementById(styleId)) {
+                return;
+            }
+            
+            const styles = `
+                <style id="${styleId}">
+                /* Dynamic Button State Styles */
+                .button[data-form="next-btn"] {
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                /* Disabled state */
+                .button[data-form="next-btn"].wf-disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    pointer-events: none;
+                    background-color: #cccccc !important;
+                    border-color: #cccccc !important;
+                    color: #666666 !important;
+                    transform: none !important;
+                    box-shadow: none !important;
+                }
+                
+                .button[data-form="next-btn"].wf-disabled:hover {
+                    opacity: 0.5;
+                    transform: none !important;
+                    box-shadow: none !important;
+                }
+                
+                /* Loading state for validation */
+                .button[data-form="next-btn"].wf-validating {
+                    opacity: 0.8;
+                    pointer-events: none;
+                }
+                
+                .button[data-form="next-btn"].wf-validating::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    right: 12px;
+                    width: 16px;
+                    height: 16px;
+                    margin-top: -8px;
+                    border: 2px solid transparent;
+                    border-top-color: currentColor;
+                    border-radius: 50%;
+                    animation: wf-button-spin 1s linear infinite;
+                }
+                
+                @keyframes wf-button-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                /* Enhanced enabled state */
+                .button[data-form="next-btn"].wf-enabled {
+                    opacity: 1;
+                    cursor: pointer;
+                    pointer-events: auto;
+                }
+                
+                .button[data-form="next-btn"].wf-enabled:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                }
+                
+                /* Progress indicator */
+                .button[data-form="next-btn"].wf-progress::before {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    height: 3px;
+                    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+                    border-radius: 0 0 4px 4px;
+                    transition: width 0.3s ease;
+                }
+                
+                /* Tooltip for disabled state */
+                .button[data-form="next-btn"].wf-disabled::before {
+                    content: attr(data-disabled-reason);
+                    position: absolute;
+                    top: -35px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #333;
+                    color: white;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.3s ease;
+                    z-index: 10000;
+                }
+                
+                .button[data-form="next-btn"].wf-disabled:hover::before {
+                    opacity: 1;
+                }
+                
+                /* Arrow after tooltip */
+                .button[data-form="next-btn"].wf-disabled::after {
+                    content: '';
+                    position: absolute;
+                    top: -8px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 4px solid transparent;
+                    border-top-color: #333;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    z-index: 10000;
+                }
+                
+                .button[data-form="next-btn"].wf-disabled:hover::after {
+                    opacity: 1;
+                }
+                </style>
+            `;
+            
+            document.head.insertAdjacentHTML('beforeend', styles);
+            console.log('📱 Button state styles added to document');
+        },
+
+        // Setup real-time validation listeners
+        setupRealTimeValidationListeners: function(form) {
+            // Listen for input changes
+            form.addEventListener('input', (e) => {
+                if (this.isRequiredField(e.target)) {
+                    this.debounceUpdateButtonStates();
+                }
+            });
+            
+            // Listen for change events (radio buttons, checkboxes, selects)
+            form.addEventListener('change', (e) => {
+                if (this.isRequiredField(e.target)) {
+                    this.updateButtonStates();
+                }
+            });
+            
+            // Listen for blur events for immediate feedback
+            form.addEventListener('blur', (e) => {
+                if (this.isRequiredField(e.target)) {
+                    this.updateButtonStates();
+                }
+            }, true);
+            
+            // Listen for step changes
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && 
+                        mutation.attributeName === 'style' &&
+                        mutation.target.hasAttribute('data-form') &&
+                        mutation.target.getAttribute('data-form') === 'step') {
+                        // Step visibility changed, update button states
+                        setTimeout(() => this.updateButtonStates(), 100);
+                    }
+                });
+            });
+            
+            // Observe step visibility changes
+            const steps = form.querySelectorAll('[data-form="step"]');
+            steps.forEach(step => {
+                observer.observe(step, { attributes: true, attributeFilter: ['style'] });
+            });
+            
+            console.log('👂 Real-time validation listeners setup complete');
+        },
+
+        // Debounced button state update for performance
+        debounceUpdateButtonStates: function() {
+            if (this.buttonUpdateTimeout) {
+                clearTimeout(this.buttonUpdateTimeout);
+            }
+            
+            this.buttonUpdateTimeout = setTimeout(() => {
+                this.updateButtonStates();
+            }, 300);
+        },
+
+        // Check if field is required
+        isRequiredField: function(field) {
+            return field.hasAttribute('required') || 
+                   field.getAttribute('aria-required') === 'true' ||
+                   field.classList.contains('required');
+        },
+
+        // Update button states based on current step validation
+        updateButtonStates: function() {
+            if (!this.branchingState.currentStep) {
+                console.log('No current step - skipping button state update');
+                return;
+            }
+            
+            console.log('🔄 Updating button states...');
+            
+            // Get current step validation status
+            const currentStepValid = this.validateCurrentStepForButtons();
+            
+            // Find next buttons in current step
+            const currentStepButtons = this.branchingState.currentStep.querySelectorAll('[data-form="next-btn"]');
+            
+            currentStepButtons.forEach(button => {
+                this.updateButtonState(button, currentStepValid);
+            });
+            
+            console.log(`📊 Button states updated - Current step valid: ${currentStepValid.isValid}`);
+        },
+
+        // Validate current step specifically for button states (non-intrusive)
+        validateCurrentStepForButtons: function() {
+            if (!this.branchingState.currentStep) {
+                return { isValid: false, missingFields: [], totalRequired: 0 };
+            }
+            
+            const requiredFields = this.branchingState.currentStep.querySelectorAll('input[required], select[required], textarea[required]');
+            const missingFields = [];
+            let totalRequired = 0;
+            
+            requiredFields.forEach(field => {
+                // Only count visible fields
+                if (this.isFieldVisible(field)) {
+                    totalRequired++;
+                    
+                    if (!this.isFieldValid(field)) {
+                        missingFields.push({
+                            field: field,
+                            name: field.name || field.id || 'unnamed',
+                            type: field.type || field.tagName.toLowerCase()
+                        });
+                    }
+                }
+            });
+            
+            const isValid = missingFields.length === 0 && totalRequired > 0;
+            
+            return {
+                isValid: isValid,
+                missingFields: missingFields,
+                totalRequired: totalRequired,
+                completedFields: totalRequired - missingFields.length
+            };
+        },
+
+        // Check if field is visible
+        isFieldVisible: function(field) {
+            const fieldStep = field.closest('[data-form="step"]');
+            const stepItem = field.closest('.step_item, .step-item');
+            
+            // Check if field's step is visible
+            if (fieldStep && fieldStep.style.display === 'none') {
+                return false;
+            }
+            
+            // Check if field's step item is visible (for branching logic)
+            if (stepItem && stepItem.style.display === 'none') {
+                return false;
+            }
+            
+            // Check if field itself is visible
+            if (field.style.display === 'none' || field.hidden) {
+                return false;
+            }
+            
+            return true;
+        },
+
+        // Check if individual field is valid (non-intrusive)
+        isFieldValid: function(field) {
+            if (!field.required) return true;
+            
+            const fieldType = field.type || field.tagName.toLowerCase();
+            
+            switch (fieldType) {
+                case 'radio':
+                    // Check if any radio in the group is selected
+                    const radioGroup = document.querySelectorAll(`input[type="radio"][name="${field.name}"]`);
+                    return Array.from(radioGroup).some(radio => radio.checked);
+                    
+                case 'checkbox':
+                    return field.checked;
+                    
+                case 'select':
+                case 'select-one':
+                    const value = field.value.trim();
+                    return value !== '' && 
+                           value !== 'Another option' && 
+                           !value.toLowerCase().includes('select');
+                    
+                case 'email':
+                    const emailValue = field.value.trim();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    return emailValue !== '' && emailRegex.test(emailValue);
+                    
+                default:
+                    return field.value.trim() !== '';
+            }
+        },
+
+        // Update individual button state
+        updateButtonState: function(button, validationResult) {
+            const buttonId = button.id || 'unnamed-button';
+            
+            // Remove existing state classes
+            button.classList.remove('wf-disabled', 'wf-enabled', 'wf-validating', 'wf-progress');
+            
+            if (validationResult.isValid) {
+                // Enable button
+                button.classList.add('wf-enabled');
+                button.removeAttribute('disabled');
+                button.removeAttribute('data-disabled-reason');
+                
+                // Add progress indicator
+                if (validationResult.totalRequired > 0) {
+                    button.classList.add('wf-progress');
+                    const progressPercent = (validationResult.completedFields / validationResult.totalRequired) * 100;
+                    button.style.setProperty('--progress-width', `${progressPercent}%`);
+                }
+                
+                console.log(`✅ Button enabled: ${buttonId}`);
+                
+            } else {
+                // Disable button
+                button.classList.add('wf-disabled');
+                button.setAttribute('disabled', 'disabled');
+                
+                // Set tooltip reason
+                const missingCount = validationResult.missingFields.length;
+                const reason = missingCount === 1 
+                    ? '1 required field missing' 
+                    : `${missingCount} required fields missing`;
+                    
+                button.setAttribute('data-disabled-reason', reason);
+                
+                console.log(`❌ Button disabled: ${buttonId} - ${reason}`);
+            }
+            
+            // Trigger custom event for external integrations
+            this.triggerCustomEvent(button, 'buttonStateChanged', {
+                isEnabled: validationResult.isValid,
+                validationResult: validationResult
+            });
+        },
+
+        // Enable button (manual override)
+        enableButton: function(button) {
+            button.classList.remove('wf-disabled');
+            button.classList.add('wf-enabled');
+            button.removeAttribute('disabled');
+            button.removeAttribute('data-disabled-reason');
+            
+            console.log(`🔓 Button manually enabled: ${button.id || 'unnamed'}`);
+        },
+
+        // Disable button (manual override)
+        disableButton: function(button, reason = 'Validation required') {
+            button.classList.remove('wf-enabled');
+            button.classList.add('wf-disabled');
+            button.setAttribute('disabled', 'disabled');
+            button.setAttribute('data-disabled-reason', reason);
+            
+            console.log(`🔒 Button manually disabled: ${button.id || 'unnamed'} - ${reason}`);
+        },
+
+        // Get button state summary
+        getButtonStateSummary: function() {
+            const summary = {
+                totalButtons: 0,
+                enabledButtons: 0,
+                disabledButtons: 0,
+                buttonDetails: []
+            };
+            
+            if (this.branchingState.nextButtons) {
+                this.branchingState.nextButtons.forEach((button, index) => {
+                    const isEnabled = !button.hasAttribute('disabled');
+                    const reason = button.getAttribute('data-disabled-reason') || '';
+                    
+                    summary.totalButtons++;
+                    if (isEnabled) {
+                        summary.enabledButtons++;
+                    } else {
+                        summary.disabledButtons++;
+                    }
+                    
+                    summary.buttonDetails.push({
+                        index: index,
+                        id: button.id || `button-${index}`,
+                        isEnabled: isEnabled,
+                        disabledReason: reason
+                    });
+                });
+            }
+            
+            return summary;
+        },
+
+        // Clear button state management
+        clearButtonStateManagement: function() {
+            if (this.branchingState.nextButtons) {
+                this.branchingState.nextButtons.forEach(button => {
+                    button.classList.remove('wf-disabled', 'wf-enabled', 'wf-validating', 'wf-progress');
+                    button.removeAttribute('disabled');
+                    button.removeAttribute('data-disabled-reason');
+                });
+            }
+            
+            // Clear timeout
+            if (this.buttonUpdateTimeout) {
+                clearTimeout(this.buttonUpdateTimeout);
+            }
+            
+            // Remove styles
+            const styleElement = document.getElementById('wf-button-state-styles');
+            if (styleElement) {
+                styleElement.remove();
+            }
+            
+            console.log('🧹 Button state management cleared');
         }
     };
 

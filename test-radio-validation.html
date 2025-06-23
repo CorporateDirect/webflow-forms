@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Validation Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        
+        .form-group h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .radio-option:hover {
+            background-color: #f8f9fa;
+            border-color: #007bff;
+        }
+        
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            cursor: pointer;
+        }
+        
+        .radio-option label {
+            cursor: pointer;
+            flex: 1;
+            margin: 0;
+        }
+        
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-controls {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        
+        .test-controls h4 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>🔘 Radio Field Validation Test</h1>
+        <p>Test the radio field validation with different scenarios.</p>
+    </div>
+
+    <!-- Test Form 1: Basic Required Radio -->
+    <div class="form-container">
+        <h2>Test 1: Basic Required Radio Group</h2>
+        <form id="test-form-1">
+            <div class="form-group" data-validation-message="Please select your preferred contact method">
+                <h3>How would you like to be contacted? *</h3>
+                <div class="radio-option">
+                    <input type="radio" id="contact-email" name="contact_method" value="email" required>
+                    <label for="contact-email">Email</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="contact-phone" name="contact_method" value="phone" required>
+                    <label for="contact-phone">Phone</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="contact-mail" name="contact_method" value="mail" required>
+                    <label for="contact-mail">Regular Mail</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="button">Submit</button>
+            <button type="button" class="button" onclick="clearForm('test-form-1')">Clear</button>
+        </form>
+    </div>
+
+    <!-- Test Form 2: Multiple Radio Groups -->
+    <div class="form-container">
+        <h2>Test 2: Multiple Required Groups</h2>
+        <form id="test-form-2">
+            <div class="form-group" data-validation-message="Please select your experience level">
+                <h3>Experience Level *</h3>
+                <div class="radio-option">
+                    <input type="radio" id="exp-beginner" name="experience" value="beginner" required>
+                    <label for="exp-beginner">Beginner (0-1 years)</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="exp-intermediate" name="experience" value="intermediate" required>
+                    <label for="exp-intermediate">Intermediate (2-5 years)</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="exp-advanced" name="experience" value="advanced" required>
+                    <label for="exp-advanced">Advanced (5+ years)</label>
+                </div>
+            </div>
+
+            <div class="form-group" data-validation-message="Please choose your budget range">
+                <h3>Budget Range *</h3>
+                <div class="radio-option">
+                    <input type="radio" id="budget-low" name="budget" value="under-1000" required>
+                    <label for="budget-low">Under $1,000</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="budget-mid" name="budget" value="1000-5000" required>
+                    <label for="budget-mid">$1,000 - $5,000</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="budget-high" name="budget" value="over-5000" required>
+                    <label for="budget-high">Over $5,000</label>
+                </div>
+            </div>
+
+            <!-- Optional group (should not show errors) -->
+            <div class="form-group">
+                <h3>Newsletter Frequency (Optional)</h3>
+                <div class="radio-option">
+                    <input type="radio" id="newsletter-weekly" name="newsletter" value="weekly">
+                    <label for="newsletter-weekly">Weekly Updates</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="newsletter-monthly" name="newsletter" value="monthly">
+                    <label for="newsletter-monthly">Monthly Digest</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="newsletter-none" name="newsletter" value="none">
+                    <label for="newsletter-none">No Newsletter</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="button">Submit Form</button>
+            <button type="button" class="button" onclick="clearForm('test-form-2')">Clear All</button>
+        </form>
+    </div>
+
+    <!-- Test Form 3: Custom Error Messages -->
+    <div class="form-container">
+        <h2>Test 3: Custom Error Messages</h2>
+        <form id="test-form-3">
+            <div class="form-group" data-validation-message="You must choose a plan to continue">
+                <h3>Select Your Plan *</h3>
+                <div class="radio-option">
+                    <input type="radio" id="plan-basic" name="plan" value="basic" required>
+                    <label for="plan-basic">Basic Plan - $9/month</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="plan-pro" name="plan" value="pro" required>
+                    <label for="plan-pro">Pro Plan - $19/month</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="plan-enterprise" name="plan" value="enterprise" required>
+                    <label for="plan-enterprise">Enterprise Plan - $49/month</label>
+                </div>
+            </div>
+
+            <div class="form-group" data-validation-message="Please confirm your agreement to proceed">
+                <h3>Agreement *</h3>
+                <div class="radio-option">
+                    <input type="radio" id="agree-yes" name="agreement" value="yes" required>
+                    <label for="agree-yes">I agree to the terms and conditions</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="agree-no" name="agreement" value="no" required>
+                    <label for="agree-no">I do not agree</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="button">Proceed</button>
+            <button type="button" class="button" onclick="clearForm('test-form-3')">Reset</button>
+        </form>
+    </div>
+
+    <!-- Test Controls -->
+    <div class="form-container">
+        <div class="test-controls">
+            <h4>Test Controls</h4>
+            <button class="button" onclick="validateAllForms()">Validate All Forms</button>
+            <button class="button" onclick="clearAllForms()">Clear All Forms</button>
+            <button class="button" onclick="showValidationSummary()">Show Summary</button>
+        </div>
+        
+        <div id="summary" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 4px; display: none;">
+            <h4>Validation Summary</h4>
+            <div id="summary-content"></div>
+        </div>
+    </div>
+
+    <!-- Include the radio validation script -->
+    <script src="radio-validation.js"></script>
+
+    <script>
+        // Test helper functions
+        function clearForm(formId) {
+            const form = document.getElementById(formId);
+            const radios = form.querySelectorAll('input[type="radio"]');
+            radios.forEach(radio => radio.checked = false);
+            
+            // Trigger validation to clear errors
+            radios.forEach(radio => {
+                RadioValidator.validateGroup(radio.name);
+            });
+        }
+
+        function clearAllForms() {
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.checked = false;
+            });
+            
+            // Clear all validation
+            RadioValidator.radioGroups.forEach((group, name) => {
+                RadioValidator.clearError(group);
+            });
+        }
+
+        function validateAllForms() {
+            const isValid = RadioValidator.validateAll();
+            alert(isValid ? 'All forms are valid!' : 'Some forms have validation errors.');
+            
+            if (!isValid) {
+                RadioValidator.focusFirstError();
+            }
+        }
+
+        function showValidationSummary() {
+            const summary = document.getElementById('summary');
+            const content = document.getElementById('summary-content');
+            
+            let html = '<p><strong>Radio Groups Found:</strong></p><ul>';
+            
+            RadioValidator.radioGroups.forEach((group, name) => {
+                const hasSelection = group.radios.some(r => r.checked);
+                const status = group.isRequired 
+                    ? (hasSelection ? '✅ Valid' : '❌ Invalid') 
+                    : '➖ Optional';
+                
+                html += `<li>${name}: ${status} (${group.radios.length} options)</li>`;
+            });
+            
+            html += '</ul>';
+            content.innerHTML = html;
+            summary.style.display = 'block';
+        }
+
+        // Form submission handlers
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formId = this.id;
+                const isValid = RadioValidator.validateAll();
+                
+                if (isValid) {
+                    alert(`${formId} submitted successfully!`);
+                } else {
+                    alert('Please fix validation errors before submitting.');
+                    RadioValidator.focusFirstError();
+                }
+            });
+        });
+
+        // Show initial summary after a short delay
+        setTimeout(() => {
+            showValidationSummary();
+        }, 500);
+    </script>
+</body>
+</html> 
