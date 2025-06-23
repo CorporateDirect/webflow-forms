@@ -1266,24 +1266,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             });
             
-            // Listen for form submissions
+            // IMPORTANT: Only validate on form submit, not on next button clicks
+            // This allows multi-step navigation to work normally
             context.addEventListener('submit', (e) => {
-                if (!this.validateCurrentStep(e.target)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.focusFirstError();
-                    return false;
-                }
-            });
-            
-            // Listen for next button clicks
-            context.addEventListener('click', (e) => {
-                if (e.target.matches(this.config.nextButtonSelector)) {
-                    const currentStep = e.target.closest('[data-form="step"]');
-                    if (currentStep && !this.validateStep(currentStep)) {
+                // Only validate if this is a final form submission, not step navigation
+                const form = e.target;
+                const isMultiStep = form.querySelector('[data-form="step"]');
+                
+                if (!isMultiStep) {
+                    // Single-step form - validate normally
+                    if (!this.validateCurrentStep(form)) {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.focusFirstError(currentStep);
+                        this.focusFirstError();
                         return false;
                     }
                 }
@@ -1479,7 +1474,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             document.head.insertAdjacentHTML('beforeend', styles);
         },
         
-        // Public API
+        // Public API methods
         isGroupValid: function(groupName) {
             const group = this.radioGroups.get(groupName);
             return group ? group.isValid : true;
@@ -1504,6 +1499,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         refresh: function() {
             this.radioGroups.clear();
             this.init();
+        },
+        
+        // Method to validate a specific step (for multi-step integration)
+        validateStepForNavigation: function(step) {
+            return this.validateStep(step);
         }
     };
 
