@@ -4180,15 +4180,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Store the original error message from Webflow (preserve custom messages)
             const originalErrorMessage = errorElement.textContent.trim() || 'Required!';
             
+            // Hide error element initially (prevent showing errors on page load)
+            errorElement.style.display = 'none';
+            
             // Store field-error relationship with original message
             this.branchingState.validationErrors.set(field, {
                 errorElement: errorElement,
                 originalErrorMessage: originalErrorMessage, // Store original Webflow message
-                isValid: true,
+                isValid: true, // Start as valid to prevent initial errors
                 lastValidated: null
             });
             
             console.log(`📝 Stored original error message for ${fieldId}: "${originalErrorMessage}"`);
+            console.log(`🙈 Hidden error element initially for ${fieldId}`);
             
             // Add validation event listeners
             field.addEventListener('blur', () => this.validateField(field));
