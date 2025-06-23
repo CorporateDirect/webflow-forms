@@ -39,7 +39,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             selectedBranch: null,
             branchHistory: [], // Track branching decisions for back navigation
             skipHistory: [], // Track skip navigation for analytics
-            validationErrors: new Map() // Track validation errors for each field
+            validationErrors: new Map(), // Track validation errors for each field
+            radioGroups: null // Added for radio group validation
         },
 
         // Clear caches (useful for debugging)
@@ -4148,12 +4149,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         initCustomErrorValidation: function(form) {
             console.log('🔍 Initializing custom error validation system...');
             
+            // Add CSS styles for enhanced validation
+            this.addValidationStyles();
+            
             // Find all required fields and their error messages
-            const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
+            const requiredFields = form.querySelectorAll('input[required]:not([type="radio"]), select[required], textarea[required]');
             
             requiredFields.forEach(field => {
                 this.setupFieldValidation(field);
             });
+            
+            // Setup radio button group validation separately
+            this.setupRadioGroupValidation(form);
             
             // Setup form submission validation
             this.setupFormSubmissionValidation(form);
@@ -4162,6 +4169,207 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.setupStepNavigationValidation(form);
             
             console.log(`✅ Custom validation setup complete for ${requiredFields.length} required fields`);
+        },
+
+        // Setup radio button group validation
+        setupRadioGroupValidation: function(form) {
+            console.log('🔘 Setting up radio button group validation...');
+            
+            // Find all required radio buttons and group them by name
+            const requiredRadios = form.querySelectorAll('input[type="radio"][required]');
+            const radioGroups = new Map();
+            
+            requiredRadios.forEach(radio => {
+                const groupName = radio.name;
+                if (!radioGroups.has(groupName)) {
+                    radioGroups.set(groupName, {
+                        name: groupName,
+                        radios: [],
+                        errorElement: null,
+                        isBranching: false,
+                        isStandardRequired: false,
+                        isValid: true
+                    });
+                }
+                
+                const group = radioGroups.get(groupName);
+                group.radios.push(radio);
+                
+                // Determine radio button type
+                if (radio.hasAttribute('data-go-to')) {
+                    group.isBranching = true;
+                } else {
+                    group.isStandardRequired = true;
+                }
+            });
+            
+            // Setup validation for each radio group
+            radioGroups.forEach((group, groupName) => {
+                this.setupRadioGroupValidationForGroup(group, form);
+            });
+            
+            // Store radio groups for later validation
+            this.branchingState.radioGroups = radioGroups;
+            
+            console.log(`✅ Radio group validation setup complete for ${radioGroups.size} groups`);
+        },
+
+        // Setup validation for individual radio group
+        setupRadioGroupValidationForGroup: function(group, form) {
+            const groupName = group.name;
+            console.log(`🔘 Setting up validation for radio group: "${groupName}" (${group.isBranching ? 'Branching' : 'Standard Required'})`);
+            
+            // Find error element for this radio group
+            if (group.isStandardRequired) {
+                // For standard required radio groups, look for error element near the group
+                group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
+                
+                if (group.errorElement) {
+                    // Store original error message
+                    const originalErrorMessage = group.errorElement.textContent.trim() || 'Please select an option';
+                    group.originalErrorMessage = originalErrorMessage;
+                    
+                    // Hide error element initially
+                    group.errorElement.style.display = 'none';
+                    
+                    console.log(`📝 Found error element for radio group "${groupName}": "${originalErrorMessage}"`);
+                } else {
+                    console.warn(`No error element found for radio group: "${groupName}"`);
+                }
+            }
+            
+            // Add change listeners to all radios in the group
+            group.radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.checked) {
+                        this.validateRadioGroup(group);
+                    }
+                });
+            });
+        },
+
+        // Find error element for radio group
+        findRadioGroupErrorElement: function(firstRadio) {
+            // Look for error element in the radio group container
+            const groupContainer = firstRadio.closest('.multi-form_field-wrapper') || 
+                                 firstRadio.closest('.form_radio-2col') || 
+                                 firstRadio.closest('.radio_component') || 
+                                 firstRadio.parentElement;
+            
+            if (groupContainer) {
+                // Look for error element within the container
+                let errorElement = groupContainer.querySelector('.text-size-tiny.error-state');
+                if (errorElement) return errorElement;
+                
+                errorElement = groupContainer.querySelector('.text-size-small.error-state');
+                if (errorElement) return errorElement;
+                
+                // Look for error element after the container
+                let nextElement = groupContainer.nextElementSibling;
+                while (nextElement) {
+                    if ((nextElement.classList.contains('text-size-tiny') || nextElement.classList.contains('text-size-small')) && 
+                        nextElement.classList.contains('error-state')) {
+                        return nextElement;
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+            }
+            
+            return null;
+        },
+
+        // Validate radio group
+        validateRadioGroup: function(group) {
+            const groupName = group.name;
+            const isSelected = group.radios.some(radio => radio.checked);
+            
+            group.isValid = isSelected;
+            
+            if (group.isStandardRequired && group.errorElement) {
+                if (isSelected) {
+                    this.hideRadioGroupError(group);
+                } else {
+                    this.showRadioGroupError(group);
+                }
+            }
+            
+            console.log(`🔘 Radio group "${groupName}" validation: ${isSelected ? '✅ Valid' : '❌ Invalid'}`);
+            return isSelected;
+        },
+
+        // Show radio group error
+        showRadioGroupError: function(group) {
+            if (!group.errorElement) return;
+            
+            // Show error message using original Webflow text
+            if (group.errorElement.textContent !== group.originalErrorMessage) {
+                group.errorElement.textContent = group.originalErrorMessage;
+            }
+            
+            group.errorElement.style.display = 'block';
+            
+            // Add error styling to radio buttons
+            group.radios.forEach(radio => {
+                const radioWrapper = radio.closest('.form_radio') || radio.closest('.radio_field');
+                if (radioWrapper) {
+                    radioWrapper.classList.add('field-error');
+                }
+            });
+            
+            console.log(`📝 Showing error for radio group "${group.name}": "${group.originalErrorMessage}"`);
+        },
+
+        // Hide radio group error
+        hideRadioGroupError: function(group) {
+            if (!group.errorElement) return;
+            
+            group.errorElement.style.display = 'none';
+            
+            // Remove error styling from radio buttons
+            group.radios.forEach(radio => {
+                const radioWrapper = radio.closest('.form_radio') || radio.closest('.radio_field');
+                if (radioWrapper) {
+                    radioWrapper.classList.remove('field-error');
+                }
+            });
+            
+            console.log(`🧹 Hidden error for radio group "${group.name}"`);
+        },
+
+        // Validate all radio groups in current step
+        validateCurrentStepRadioGroups: function(currentStep) {
+            if (!this.branchingState.radioGroups) return true;
+            
+            let allValid = true;
+            const invalidGroups = [];
+            
+            this.branchingState.radioGroups.forEach((group, groupName) => {
+                // Check if any radio from this group is in the current step
+                const hasRadioInStep = group.radios.some(radio => 
+                    currentStep.contains(radio)
+                );
+                
+                if (hasRadioInStep && group.isStandardRequired) {
+                    const isGroupValid = this.validateRadioGroup(group);
+                    if (!isGroupValid) {
+                        allValid = false;
+                        invalidGroups.push(group);
+                    }
+                }
+            });
+            
+            if (!allValid) {
+                console.log(`❌ Radio group validation failed for ${invalidGroups.length} groups in current step`);
+                
+                // Focus on first invalid radio group
+                if (invalidGroups.length > 0 && invalidGroups[0].radios.length > 0) {
+                    setTimeout(() => {
+                        invalidGroups[0].radios[0].focus();
+                    }, 100);
+                }
+            }
+            
+            return allValid;
         },
 
         // Setup validation for individual field
@@ -4411,7 +4619,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             console.log('🔍 Validating current step...');
             
-            const requiredFields = this.branchingState.currentStep.querySelectorAll('input[required], select[required], textarea[required]');
+            // Validate regular required fields (excluding radio buttons)
+            const requiredFields = this.branchingState.currentStep.querySelectorAll('input[required]:not([type="radio"]), select[required], textarea[required]');
             let allValid = true;
             const invalidFields = [];
             
@@ -4423,10 +4632,16 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             });
             
+            // Validate radio button groups separately
+            const radioGroupsValid = this.validateCurrentStepRadioGroups(this.branchingState.currentStep);
+            if (!radioGroupsValid) {
+                allValid = false;
+            }
+            
             if (allValid) {
                 console.log('✅ Current step validation passed');
             } else {
-                console.log(`❌ Current step validation failed. Invalid fields: ${invalidFields.length}`);
+                console.log(`❌ Current step validation failed. Invalid regular fields: ${invalidFields.length}, Radio groups valid: ${radioGroupsValid}`);
                 
                 // Focus on first invalid field
                 if (showErrors && invalidFields.length > 0) {
@@ -4600,6 +4815,65 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             } catch (error) {
                 console.warn('Error triggering custom event:', eventName, error);
             }
+        },
+
+        // Add CSS styles for enhanced validation
+        addValidationStyles: function() {
+            const styleId = 'webflow-validation-styles';
+            
+            // Don't add styles if already present
+            if (document.getElementById(styleId)) return;
+            
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                /* Enhanced Webflow Form Validation Styles */
+                
+                /* Radio button error styling */
+                .form_radio.field-error .w-radio-input,
+                .radio_field.field-error .w-radio-input {
+                    border: 2px solid #dc3545 !important;
+                    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+                }
+                
+                .form_radio.field-error .form_radio-label,
+                .radio_field.field-error .radio_label {
+                    color: #dc3545 !important;
+                }
+                
+                /* Input field error styling enhancements */
+                .field-error {
+                    border-color: #dc3545 !important;
+                    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+                }
+                
+                /* Error state text styling */
+                .text-size-tiny.error-state,
+                .text-size-small.error-state {
+                    color: #dc3545;
+                    font-weight: 500;
+                    margin-top: 0.25rem;
+                    display: block;
+                }
+                
+                /* Smooth transitions for error states */
+                .form_radio .w-radio-input,
+                .radio_field .w-radio-input,
+                .form_input,
+                .form_select {
+                    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+                }
+                
+                /* Focus states for accessibility */
+                .field-error:focus {
+                    border-color: #dc3545 !important;
+                    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.5) !important;
+                    outline: none;
+                }
+            `;
+            
+            document.head.appendChild(style);
+            console.log('✅ Enhanced validation styles added');
         }
     };
 
