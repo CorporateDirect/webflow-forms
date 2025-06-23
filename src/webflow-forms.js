@@ -4219,9 +4219,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const groupName = group.name;
             console.log(`🔘 Setting up validation for radio group: "${groupName}" (${group.isBranching ? 'Branching' : 'Standard Required'})`);
             
-            // Find error element for this radio group
+            // Only find and manage error elements for standard required radio groups
+            // Branching radio groups handle their own error display during navigation
             if (group.isStandardRequired) {
-                // For standard required radio groups, look for error element near the group
                 group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
                 
                 if (group.errorElement) {
@@ -4232,9 +4232,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     // Hide error element initially
                     group.errorElement.style.display = 'none';
                     
-                    console.log(`📝 Found error element for radio group "${groupName}": "${originalErrorMessage}"`);
+                    console.log(`📝 Found error element for standard required radio group "${groupName}": "${originalErrorMessage}"`);
                 } else {
-                    console.warn(`No error element found for radio group: "${groupName}"`);
+                    console.warn(`No error element found for standard required radio group: "${groupName}"`);
+                }
+            } else if (group.isBranching) {
+                // For branching radio buttons, find error element but don't manage it automatically
+                group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
+                
+                if (group.errorElement) {
+                    const originalErrorMessage = group.errorElement.textContent.trim() || 'Please select an option';
+                    group.originalErrorMessage = originalErrorMessage;
+                    
+                    // Hide error element initially and keep it hidden until navigation attempt
+                    group.errorElement.style.display = 'none';
+                    
+                    console.log(`🧭 Found error element for branching radio group "${groupName}" - will only show on navigation attempt`);
                 }
             }
             
@@ -4242,7 +4255,15 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             group.radios.forEach(radio => {
                 radio.addEventListener('change', () => {
                     if (radio.checked) {
-                        this.validateRadioGroup(group);
+                        // For branching radios, only hide errors when selected
+                        // Don't validate/show errors until navigation attempt
+                        if (group.isBranching) {
+                            this.hideRadioGroupError(group);
+                            console.log(`🧭 Branching radio "${radio.value}" selected in group "${group.name}" - hiding any errors`);
+                        } else {
+                            // For standard required radios, validate normally
+                            this.validateRadioGroup(group);
+                        }
                     }
                 });
             });
@@ -4349,6 +4370,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     currentStep.contains(radio)
                 );
                 
+                // Only validate standard required radio groups during step validation
+                // Branching radio groups are validated separately during navigation
                 if (hasRadioInStep && group.isStandardRequired) {
                     const isGroupValid = this.validateRadioGroup(group);
                     if (!isGroupValid) {
@@ -4359,9 +4382,54 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
             
             if (!allValid) {
-                console.log(`❌ Radio group validation failed for ${invalidGroups.length} groups in current step`);
+                console.log(`❌ Radio group validation failed for ${invalidGroups.length} standard required groups in current step`);
                 
                 // Focus on first invalid radio group
+                if (invalidGroups.length > 0 && invalidGroups[0].radios.length > 0) {
+                    setTimeout(() => {
+                        invalidGroups[0].radios[0].focus();
+                    }, 100);
+                }
+            }
+            
+            return allValid;
+        },
+
+        // Validate branching radio groups for navigation
+        validateBranchingRadioGroups: function(currentStep) {
+            if (!this.branchingState.radioGroups) return true;
+            
+            let allValid = true;
+            const invalidGroups = [];
+            
+            this.branchingState.radioGroups.forEach((group, groupName) => {
+                // Check if any radio from this group is in the current step
+                const hasRadioInStep = group.radios.some(radio => 
+                    currentStep.contains(radio)
+                );
+                
+                // Only validate branching radio groups for navigation
+                if (hasRadioInStep && group.isBranching) {
+                    const isSelected = group.radios.some(radio => radio.checked);
+                    
+                    if (!isSelected) {
+                        allValid = false;
+                        invalidGroups.push(group);
+                        // Show error for branching radio groups only when trying to navigate
+                        this.showRadioGroupError(group);
+                        console.log(`❌ Branching radio group "${groupName}" validation failed - no selection made`);
+                    } else {
+                        // Hide error if selection is made
+                        this.hideRadioGroupError(group);
+                        console.log(`✅ Branching radio group "${groupName}" validation passed`);
+                    }
+                }
+            });
+            
+            if (!allValid) {
+                console.log(`❌ Branching radio group validation failed for ${invalidGroups.length} groups - navigation blocked`);
+                
+                // Focus on first invalid branching radio group
                 if (invalidGroups.length > 0 && invalidGroups[0].radios.length > 0) {
                     setTimeout(() => {
                         invalidGroups[0].radios[0].focus();
@@ -4729,9 +4797,13 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 button.addEventListener('click', (e) => {
                     console.log('➡️ Next step attempted - running validation...');
                     
+                    // Validate standard required fields and standard required radio groups
                     const isCurrentStepValid = this.validateCurrentStep(true);
                     
-                    if (!isCurrentStepValid) {
+                    // Validate branching radio groups separately (only on navigation attempt)
+                    const areBranchingRadiosValid = this.validateBranchingRadioGroups(this.branchingState.currentStep);
+                    
+                    if (!isCurrentStepValid || !areBranchingRadiosValid) {
                         e.preventDefault();
                         e.stopPropagation();
                         
