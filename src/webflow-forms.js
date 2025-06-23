@@ -4201,6 +4201,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 } else {
                     group.isStandardRequired = true;
                 }
+                
+                // Track interaction state for standard required radio groups
+                group.hasBeenInteracted = false;
             });
             
             // Setup validation for each radio group
@@ -4253,8 +4256,21 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             // Add change listeners to all radios in the group
             group.radios.forEach(radio => {
+                // Add interaction tracking for standard required radio groups
+                radio.addEventListener('focus', () => {
+                    if (group.isStandardRequired) {
+                        group.hasBeenInteracted = true;
+                        console.log(`👆 User focused on radio group "${group.name}" - marked as interacted`);
+                    }
+                });
+                
                 radio.addEventListener('change', () => {
                     if (radio.checked) {
+                        // Mark as interacted for standard required radio groups
+                        if (group.isStandardRequired) {
+                            group.hasBeenInteracted = true;
+                        }
+                        
                         // For branching radios, only hide errors when selected
                         // Don't validate/show errors until navigation attempt
                         if (group.isBranching) {
@@ -4370,9 +4386,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     currentStep.contains(radio)
                 );
                 
-                // Only validate standard required radio groups during step validation
-                // Branching radio groups are validated separately during navigation
-                if (hasRadioInStep && group.isStandardRequired) {
+                // Only validate standard required radio groups that have been interacted with
+                // This prevents showing errors for untouched radio groups
+                if (hasRadioInStep && group.isStandardRequired && group.hasBeenInteracted) {
                     const isGroupValid = this.validateRadioGroup(group);
                     if (!isGroupValid) {
                         allValid = false;
@@ -4382,7 +4398,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             });
             
             if (!allValid) {
-                console.log(`❌ Radio group validation failed for ${invalidGroups.length} standard required groups in current step`);
+                console.log(`❌ Radio group validation failed for ${invalidGroups.length} interacted standard required groups in current step`);
                 
                 // Focus on first invalid radio group
                 if (invalidGroups.length > 0 && invalidGroups[0].radios.length > 0) {
