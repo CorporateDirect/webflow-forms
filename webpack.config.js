@@ -4,8 +4,7 @@ module.exports = {
   entry: {
     'webflow-forms': './src/webflow-forms-fixed.js', // Use the optimized version
     'webflow-forms-complete': './src/webflow-forms-complete.js',
-    'tryformly-compatible': './src/tryformly-compatible.js',
-    'branching-radio-validator': './src/webflow-forms-branching-validation.js'
+    'tryformly-compatible': './src/tryformly-compatible.js'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
