@@ -4048,6 +4048,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             step.style.display = 'flex';
             step.classList.add('active-step');
             
+            // Hide any error elements that might be visible in this step
+            setTimeout(() => {
+                this.hideErrorElementsInStep(step);
+            }, 10);
+            
             console.log('Showing step:', this.getStepId(step));
         },
 
@@ -4155,6 +4160,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Hide all error elements initially as a safety measure
             this.hideAllErrorElementsInitially(form);
             
+            // Additional targeted hiding for specific error messages
+            this.hideSpecificErrorMessages(form);
+            
             // Find all required fields and their error messages
             const requiredFields = form.querySelectorAll('input[required]:not([type="radio"]), select[required], textarea[required]');
             
@@ -4174,16 +4182,89 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             console.log(`✅ Custom validation setup complete for ${requiredFields.length} required fields`);
         },
 
-        // Hide all error elements initially to prevent premature displays
-        hideAllErrorElementsInitially: function(form) {
-            const allErrorElements = form.querySelectorAll('.text-size-tiny.error-state, .text-size-small.error-state');
+        // Hide specific error messages that might be showing
+        hideSpecificErrorMessages: function(form) {
+            // Target the specific error message we're seeing
+            const allElements = form.querySelectorAll('*');
+            let hiddenCount = 0;
             
-            allErrorElements.forEach(errorElement => {
-                errorElement.style.display = 'none';
-                console.log(`🙈 Initially hiding error element: "${errorElement.textContent.trim()}"`);
+            allElements.forEach(element => {
+                const text = element.textContent.trim();
+                if (text === 'Please select whether the member is an individual, an entity, or a trust.' ||
+                    text === 'Please select whether the member is an individual, an entity, or a trust' ||
+                    text.includes('Please select whether the member')) {
+                    
+                    element.style.display = 'none !important';
+                    element.style.visibility = 'hidden !important';
+                    element.style.opacity = '0 !important';
+                    element.style.height = '0 !important';
+                    element.style.overflow = 'hidden !important';
+                    hiddenCount++;
+                    console.log(`🎯 Specifically hidden error message: "${text}"`);
+                }
             });
             
-            console.log(`🧹 Initially hid ${allErrorElements.length} error elements`);
+            if (hiddenCount > 0) {
+                console.log(`🎯 Hidden ${hiddenCount} specific error messages`);
+            }
+        },
+
+        // Hide all error elements initially to prevent premature displays
+        hideAllErrorElementsInitially: function(form) {
+            // Find all possible error element selectors
+            const errorSelectors = [
+                '.text-size-tiny.error-state',
+                '.text-size-small.error-state',
+                '.error-state',
+                '[class*="error"]',
+                '.text-size-tiny:contains("Please select")',
+                '.text-size-small:contains("Please select")'
+            ];
+            
+            let totalHidden = 0;
+            
+            errorSelectors.forEach(selector => {
+                try {
+                    const elements = form.querySelectorAll(selector);
+                    elements.forEach(errorElement => {
+                        // Check if this looks like an error message
+                        const text = errorElement.textContent.trim().toLowerCase();
+                        if (text.includes('required') || 
+                            text.includes('please select') || 
+                            text.includes('error') ||
+                            text.includes('invalid') ||
+                            errorElement.classList.contains('error-state')) {
+                            
+                            errorElement.style.display = 'none';
+                            errorElement.style.visibility = 'hidden';
+                            totalHidden++;
+                            console.log(`🙈 Initially hiding error element: "${errorElement.textContent.trim()}"`);
+                        }
+                    });
+                } catch (e) {
+                    // Skip invalid selectors
+                }
+            });
+            
+            // Additional aggressive hiding for radio button areas
+            const radioContainers = form.querySelectorAll('.radio_component, .form_radio-2col, .multi-form_option-container');
+            radioContainers.forEach(container => {
+                const errorElements = container.querySelectorAll('*');
+                errorElements.forEach(element => {
+                    const text = element.textContent.trim().toLowerCase();
+                    if ((text.includes('please select') || text.includes('required')) && 
+                        (element.classList.contains('text-size-tiny') || 
+                         element.classList.contains('text-size-small') ||
+                         element.classList.contains('error-state'))) {
+                        element.style.display = 'none';
+                        element.style.visibility = 'hidden';
+                        totalHidden++;
+                        console.log(`🙈 Aggressively hiding radio error: "${element.textContent.trim()}"`);
+                    }
+                });
+            });
+            
+            console.log(`🧹 Initially hid ${totalHidden} error elements`);
         },
 
         // Setup radio button group validation
@@ -4254,9 +4335,48 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     console.warn(`No error element found for standard required radio group: "${groupName}"`);
                 }
             } else if (group.isBranching) {
-                // For branching radio buttons, don't find error elements initially
-                // This prevents any premature error display
-                console.log(`🧭 Branching radio group "${groupName}" - skipping error element detection initially`);
+                // For branching radio buttons, aggressively find and hide any error elements
+                console.log(`🧭 Branching radio group "${groupName}" - aggressively hiding any error elements`);
+                
+                // Look for error elements in the vicinity and hide them
+                const firstRadio = group.radios[0];
+                const container = firstRadio.closest('.multi-form_option-container') || 
+                                firstRadio.closest('.radio_component') || 
+                                firstRadio.closest('.multi-form_field-wrapper') ||
+                                firstRadio.parentElement;
+                
+                if (container) {
+                    // Find all text elements in and around the container
+                    const allElements = container.querySelectorAll('*');
+                    allElements.forEach(element => {
+                        const text = element.textContent.trim();
+                        if (text.includes('Please select whether the member') ||
+                            text.includes('please select') ||
+                            (text.includes('required') && element.classList.contains('error-state'))) {
+                            
+                            element.style.display = 'none !important';
+                            element.style.visibility = 'hidden !important';
+                            element.style.opacity = '0 !important';
+                            console.log(`🎯 Aggressively hidden branching radio error: "${text}"`);
+                        }
+                    });
+                    
+                    // Also check after the container
+                    let nextElement = container.nextElementSibling;
+                    while (nextElement) {
+                        const text = nextElement.textContent.trim();
+                        if (text.includes('Please select whether the member') ||
+                            text.includes('please select')) {
+                            
+                            nextElement.style.display = 'none !important';
+                            nextElement.style.visibility = 'hidden !important';
+                            nextElement.style.opacity = '0 !important';
+                            console.log(`🎯 Aggressively hidden adjacent error: "${text}"`);
+                        }
+                        nextElement = nextElement.nextElementSibling;
+                    }
+                }
+                
                 group.errorElement = null;
                 group.originalErrorMessage = 'Please select an option';
             }
@@ -4989,6 +5109,48 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             
             document.head.appendChild(style);
             console.log('✅ Enhanced validation styles added');
+        },
+
+        // Show step with enhanced error hiding
+        showStep: function(step) {
+            if (!step) return;
+            
+            step.style.display = 'block';
+            step.style.opacity = '1';
+            
+            // Hide any error elements that might be visible in this step
+            setTimeout(() => {
+                this.hideErrorElementsInStep(step);
+            }, 50);
+            
+            console.log('Showing step:', step.getAttribute('data-form') || 'unknown');
+        },
+
+        // Hide error elements specifically in a step
+        hideErrorElementsInStep: function(step) {
+            if (!step) return;
+            
+            // Find all potential error elements in this step
+            const errorElements = step.querySelectorAll('.text-size-tiny, .text-size-small, .error-state, [class*="error"]');
+            let hiddenCount = 0;
+            
+            errorElements.forEach(element => {
+                const text = element.textContent.trim().toLowerCase();
+                if (text.includes('please select') || 
+                    text.includes('required') || 
+                    text.includes('invalid') ||
+                    element.classList.contains('error-state')) {
+                    
+                    element.style.display = 'none';
+                    element.style.visibility = 'hidden';
+                    hiddenCount++;
+                    console.log(`🧹 Hidden error in step: "${element.textContent.trim()}"`);
+                }
+            });
+            
+            if (hiddenCount > 0) {
+                console.log(`🧹 Hidden ${hiddenCount} error elements in current step`);
+            }
         }
     };
 
