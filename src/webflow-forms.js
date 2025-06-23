@@ -4152,6 +4152,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Add CSS styles for enhanced validation
             this.addValidationStyles();
             
+            // Hide all error elements initially as a safety measure
+            this.hideAllErrorElementsInitially(form);
+            
             // Find all required fields and their error messages
             const requiredFields = form.querySelectorAll('input[required]:not([type="radio"]), select[required], textarea[required]');
             
@@ -4169,6 +4172,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.setupStepNavigationValidation(form);
             
             console.log(`✅ Custom validation setup complete for ${requiredFields.length} required fields`);
+        },
+
+        // Hide all error elements initially to prevent premature displays
+        hideAllErrorElementsInitially: function(form) {
+            const allErrorElements = form.querySelectorAll('.text-size-tiny.error-state, .text-size-small.error-state');
+            
+            allErrorElements.forEach(errorElement => {
+                errorElement.style.display = 'none';
+                console.log(`🙈 Initially hiding error element: "${errorElement.textContent.trim()}"`);
+            });
+            
+            console.log(`🧹 Initially hid ${allErrorElements.length} error elements`);
         },
 
         // Setup radio button group validation
@@ -4223,7 +4238,6 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             console.log(`🔘 Setting up validation for radio group: "${groupName}" (${group.isBranching ? 'Branching' : 'Standard Required'})`);
             
             // Only find and manage error elements for standard required radio groups
-            // Branching radio groups handle their own error display during navigation
             if (group.isStandardRequired) {
                 group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
                 
@@ -4240,18 +4254,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     console.warn(`No error element found for standard required radio group: "${groupName}"`);
                 }
             } else if (group.isBranching) {
-                // For branching radio buttons, find error element but don't manage it automatically
-                group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
-                
-                if (group.errorElement) {
-                    const originalErrorMessage = group.errorElement.textContent.trim() || 'Please select an option';
-                    group.originalErrorMessage = originalErrorMessage;
-                    
-                    // Hide error element initially and keep it hidden until navigation attempt
-                    group.errorElement.style.display = 'none';
-                    
-                    console.log(`🧭 Found error element for branching radio group "${groupName}" - will only show on navigation attempt`);
-                }
+                // For branching radio buttons, don't find error elements initially
+                // This prevents any premature error display
+                console.log(`🧭 Branching radio group "${groupName}" - skipping error element detection initially`);
+                group.errorElement = null;
+                group.originalErrorMessage = 'Please select an option';
             }
             
             // Add change listeners to all radios in the group
@@ -4293,25 +4300,35 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                                  firstRadio.closest('.radio_component') || 
                                  firstRadio.parentElement;
             
+            console.log(`🔍 Looking for error element for radio "${firstRadio.name}" in container:`, groupContainer?.className || 'no container');
+            
             if (groupContainer) {
                 // Look for error element within the container
                 let errorElement = groupContainer.querySelector('.text-size-tiny.error-state');
-                if (errorElement) return errorElement;
+                if (errorElement) {
+                    console.log(`📍 Found .text-size-tiny.error-state within container for radio "${firstRadio.name}"`);
+                    return errorElement;
+                }
                 
                 errorElement = groupContainer.querySelector('.text-size-small.error-state');
-                if (errorElement) return errorElement;
+                if (errorElement) {
+                    console.log(`📍 Found .text-size-small.error-state within container for radio "${firstRadio.name}"`);
+                    return errorElement;
+                }
                 
-                // Look for error element after the container
+                // Look for error element immediately after the container (same level)
                 let nextElement = groupContainer.nextElementSibling;
-                while (nextElement) {
+                while (nextElement && nextElement.nodeType === 1) { // Only check element nodes
                     if ((nextElement.classList.contains('text-size-tiny') || nextElement.classList.contains('text-size-small')) && 
                         nextElement.classList.contains('error-state')) {
+                        console.log(`📍 Found error element after container for radio "${firstRadio.name}":`, nextElement.textContent.trim());
                         return nextElement;
                     }
                     nextElement = nextElement.nextElementSibling;
                 }
             }
             
+            console.log(`❌ No error element found for radio "${firstRadio.name}"`);
             return null;
         },
 
@@ -4431,6 +4448,16 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     if (!isSelected) {
                         allValid = false;
                         invalidGroups.push(group);
+                        
+                        // Find error element for branching radio only when validation fails
+                        if (!group.errorElement) {
+                            group.errorElement = this.findRadioGroupErrorElement(group.radios[0]);
+                            if (group.errorElement) {
+                                group.originalErrorMessage = group.errorElement.textContent.trim() || 'Please select an option';
+                                console.log(`🧭 Found error element for branching radio group "${groupName}" during validation: "${group.originalErrorMessage}"`);
+                            }
+                        }
+                        
                         // Show error for branching radio groups only when trying to navigate
                         this.showRadioGroupError(group);
                         console.log(`❌ Branching radio group "${groupName}" validation failed - no selection made`);
