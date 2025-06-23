@@ -4177,12 +4177,18 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 return;
             }
             
-            // Store field-error relationship
+            // Store the original error message from Webflow (preserve custom messages)
+            const originalErrorMessage = errorElement.textContent.trim() || 'Required!';
+            
+            // Store field-error relationship with original message
             this.branchingState.validationErrors.set(field, {
                 errorElement: errorElement,
+                originalErrorMessage: originalErrorMessage, // Store original Webflow message
                 isValid: true,
                 lastValidated: null
             });
+            
+            console.log(`📝 Stored original error message for ${fieldId}: "${originalErrorMessage}"`);
             
             // Add validation event listeners
             field.addEventListener('blur', () => this.validateField(field));
@@ -4208,15 +4214,19 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const fieldWrapper = field.closest('.multi-form_field-wrapper') || field.closest('.multi-form_input-field') || field.parentElement;
             
             if (fieldWrapper) {
-                // Look for .text-size-tiny.error-state within the wrapper
-                const errorElement = fieldWrapper.querySelector('.text-size-tiny.error-state');
+                // Look for both .text-size-tiny.error-state and .text-size-small.error-state within the wrapper
+                let errorElement = fieldWrapper.querySelector('.text-size-tiny.error-state');
+                if (errorElement) return errorElement;
+                
+                errorElement = fieldWrapper.querySelector('.text-size-small.error-state');
                 if (errorElement) return errorElement;
             }
             
             // Fallback: look for error element immediately after the field
             let nextElement = field.nextElementSibling;
             while (nextElement) {
-                if (nextElement.classList.contains('text-size-tiny') && nextElement.classList.contains('error-state')) {
+                if ((nextElement.classList.contains('text-size-tiny') || nextElement.classList.contains('text-size-small')) && 
+                    nextElement.classList.contains('error-state')) {
                     return nextElement;
                 }
                 nextElement = nextElement.nextElementSibling;
@@ -4236,7 +4246,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             }
             
             let isValid = true;
-            let errorMessage = 'Required!';
+            let customErrorMessage = null; // Only set for specific validation types
             
             // Check if field is required and empty
             if (field.required) {
@@ -4253,21 +4263,23 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                         selectedValue.toLowerCase().includes('select')) {
                         isValid = false;
                         console.log(`Select validation failed - value: "${selectedValue}", selectedIndex: ${field.selectedIndex}`);
+                        // Don't set customErrorMessage - use original Webflow message
                     }
                 } else {
                     // For other input types, use trim() check
                     if (!field.value.trim()) {
                         isValid = false;
+                        // Don't set customErrorMessage - use original Webflow message
                     }
                 }
             }
             
-            // Check for specific field types
+            // Check for specific field types (these get custom messages)
             if (field.type === 'email' && field.value.trim()) {
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(field.value.trim())) {
                     isValid = false;
-                    errorMessage = 'Please enter a valid email address!';
+                    customErrorMessage = 'Please enter a valid email address!';
                 }
             }
             
@@ -4280,7 +4292,8 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 if (isValid) {
                     this.hideFieldError(field);
                 } else {
-                    this.showFieldError(field, errorMessage);
+                    // Pass custom message only for specific validations, otherwise use original Webflow message
+                    this.showFieldError(field, customErrorMessage);
                 }
             }
             
@@ -4289,15 +4302,20 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         },
 
         // Show field error
-        showFieldError: function(field, message = 'Required!') {
+        showFieldError: function(field, message = null) {
             const validationData = this.branchingState.validationErrors.get(field);
             if (!validationData) return;
             
-            const { errorElement } = validationData;
+            const { errorElement, originalErrorMessage } = validationData;
             
-            // Update error message text
-            if (message && errorElement.textContent !== message) {
-                errorElement.textContent = message;
+            // Use original Webflow message if no custom message provided
+            // This preserves the custom error messages you set in Webflow
+            const displayMessage = message || originalErrorMessage;
+            
+            // Only update the text if it's different (avoid unnecessary DOM updates)
+            if (errorElement.textContent !== displayMessage) {
+                errorElement.textContent = displayMessage;
+                console.log(`📝 Using error message for ${field.id || field.name}: "${displayMessage}"`);
             }
             
             // Show error message
@@ -4307,7 +4325,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.addErrorStyling(field);
             
             // Trigger custom event
-            this.triggerCustomEvent(field, 'validationError', { message });
+            this.triggerCustomEvent(field, 'validationError', { message: displayMessage });
         },
 
         // Hide field error
