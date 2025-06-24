@@ -1,0 +1,23 @@
+--- a/src/webflow-forms.js
++++ b/src/webflow-forms.js
+@@ -4899,6 +4899,19 @@
+             // Validate conditional required fields (data-require-for-subtypes) - ONLY in visible step_items
+             const conditionalFields = this.branchingState.currentStep.querySelectorAll('[data-require-for-subtypes]:not([type="radio"])');
+             conditionalFields.forEach(field => {
++                // Check if the field is within a visible step_item
++                const stepItem = field.closest('.step_item');
++                if (stepItem) {
++                    const computedStyle = window.getComputedStyle(stepItem);
++                    const isStepItemVisible = stepItem.offsetParent !== null && 
++                                             computedStyle.display !== 'none' &&
++                                             computedStyle.visibility !== 'hidden' &&
++                                             !stepItem.hidden;
++                    
++                    if (!isStepItemVisible) {
++                        console.log(`🔍 Skipping field ${field.id || field.name} - in hidden step_item`);
++                        return; // Skip validation for fields in hidden step_items
++                    }
++                }
+                 const requiredForSubtypes = field.getAttribute('data-require-for-subtypes');
+                 if (requiredForSubtypes && this.isFieldRequiredForCurrentSubtype(field, requiredForSubtypes)) {
+                     const isFieldValid = this.validateField(field, showErrors);
