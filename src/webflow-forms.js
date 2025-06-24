@@ -4414,41 +4414,74 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
 
         // Find error element for radio group
         findRadioGroupErrorElement: function(firstRadio) {
-            // Look for error element in the radio group container
-            const groupContainer = firstRadio.closest('.multi-form_field-wrapper') || 
-                                 firstRadio.closest('.form_radio-2col') || 
-                                 firstRadio.closest('.radio_component') || 
-                                 firstRadio.parentElement;
+            const radioName = firstRadio.name;
+            console.log(`🔍 Looking for error element for radio group "${radioName}"`);
             
-            console.log(`🔍 Looking for error element for radio "${firstRadio.name}" in container:`, groupContainer?.className || 'no container');
+            // Strategy 1: Look in common radio group containers
+            const containers = [
+                firstRadio.closest('.multi-form_field-wrapper'),
+                firstRadio.closest('.form_radio-2col'), 
+                firstRadio.closest('.radio_component'),
+                firstRadio.closest('.form_field'),
+                firstRadio.closest('.field-wrapper'),
+                firstRadio.closest('[class*="radio"]'),
+                firstRadio.parentElement
+            ].filter(Boolean);
             
-            if (groupContainer) {
-                // Look for error element within the container
-                let errorElement = groupContainer.querySelector('.text-size-tiny.error-state');
-                if (errorElement) {
-                    console.log(`📍 Found .text-size-tiny.error-state within container for radio "${firstRadio.name}"`);
-                    return errorElement;
+            for (const container of containers) {
+                console.log(`🔍 Searching in container: ${container.className || 'unnamed'}`);
+                
+                // Look for error elements within container
+                const errorSelectors = [
+                    '.text-size-tiny.error-state',
+                    '.text-size-small.error-state',
+                    '.error-state',
+                    '[class*="error"]'
+                ];
+                
+                for (const selector of errorSelectors) {
+                    const errorElement = container.querySelector(selector);
+                    if (errorElement && errorElement.textContent.trim()) {
+                        console.log(`📍 Found error element "${selector}" for radio "${radioName}": "${errorElement.textContent.trim()}"`);
+                        return errorElement;
+                    }
                 }
                 
-                errorElement = groupContainer.querySelector('.text-size-small.error-state');
-                if (errorElement) {
-                    console.log(`📍 Found .text-size-small.error-state within container for radio "${firstRadio.name}"`);
-                    return errorElement;
-                }
-                
-                // Look for error element immediately after the container (same level)
-                let nextElement = groupContainer.nextElementSibling;
-                while (nextElement && nextElement.nodeType === 1) { // Only check element nodes
-                    if ((nextElement.classList.contains('text-size-tiny') || nextElement.classList.contains('text-size-small')) && 
-                        nextElement.classList.contains('error-state')) {
-                        console.log(`📍 Found error element after container for radio "${firstRadio.name}":`, nextElement.textContent.trim());
+                // Look for error element immediately after the container
+                let nextElement = container.nextElementSibling;
+                while (nextElement && nextElement.nodeType === 1) {
+                    if (nextElement.classList.contains('error-state') || 
+                        nextElement.textContent.toLowerCase().includes('required') ||
+                        nextElement.textContent.toLowerCase().includes('select')) {
+                        console.log(`📍 Found adjacent error element for radio "${radioName}": "${nextElement.textContent.trim()}"`);
                         return nextElement;
                     }
                     nextElement = nextElement.nextElementSibling;
                 }
             }
             
-            console.log(`❌ No error element found for radio "${firstRadio.name}"`);
+            // Strategy 2: Look for any error elements that might be associated with this radio group
+            // Search in the broader form context
+            const currentStep = firstRadio.closest('[data-form="step"]');
+            if (currentStep) {
+                const allErrorElements = currentStep.querySelectorAll('.error-state, [class*="error"]');
+                for (const errorEl of allErrorElements) {
+                    const errorText = errorEl.textContent.trim().toLowerCase();
+                    if (errorText && (errorText.includes('required') || errorText.includes('select'))) {
+                        // Check if this error element is near our radio group
+                        const errorRect = errorEl.getBoundingClientRect();
+                        const radioRect = firstRadio.getBoundingClientRect();
+                        const distance = Math.abs(errorRect.top - radioRect.bottom);
+                        
+                        if (distance < 100) { // Within 100px vertically
+                            console.log(`📍 Found nearby error element for radio "${radioName}": "${errorEl.textContent.trim()}"`);
+                            return errorEl;
+                        }
+                    }
+                }
+            }
+            
+            console.log(`❌ No error element found for radio "${radioName}"`);
             return null;
         },
 
@@ -4523,19 +4556,20 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     currentStep.contains(radio)
                 );
                 
-                // Only validate standard required radio groups that have been interacted with
-                // This prevents showing errors for untouched radio groups
-                if (hasRadioInStep && group.isStandardRequired && group.hasBeenInteracted) {
+                // Validate ALL standard required radio groups in current step
+                // Remove interaction requirement for more reliable validation
+                if (hasRadioInStep && group.isStandardRequired) {
                     const isGroupValid = this.validateRadioGroup(group);
                     if (!isGroupValid) {
                         allValid = false;
                         invalidGroups.push(group);
+                        console.log(`❌ Required radio group "${groupName}" has no selection`);
                     }
                 }
             });
             
             if (!allValid) {
-                console.log(`❌ Radio group validation failed for ${invalidGroups.length} interacted standard required groups in current step`);
+                console.log(`❌ Radio group validation failed for ${invalidGroups.length} required radio groups in current step`);
                 
                 // Focus on first invalid radio group
                 if (invalidGroups.length > 0 && invalidGroups[0].radios.length > 0) {
@@ -4963,6 +4997,11 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const invalidFields = [];
             
             allRequiredFields.forEach(field => {
+                // Skip radio buttons - they are validated separately
+                if (field.type === 'radio') {
+                    return;
+                }
+                
                 // Only validate visible fields in visible steps
                 const fieldStep = field.closest('[data-form="step"]');
                 if (fieldStep && fieldStep.style.display !== 'none') {
@@ -4994,6 +5033,27 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     }
                 }
             });
+            
+            // Validate radio groups across all visible steps
+            if (this.branchingState.radioGroups) {
+                this.branchingState.radioGroups.forEach((group, groupName) => {
+                    // Check if radio group is in a visible step
+                    const firstRadio = group.radios[0];
+                    const radioStep = firstRadio.closest('[data-form="step"]');
+                    
+                    if (radioStep && radioStep.style.display !== 'none' && group.isStandardRequired) {
+                        const isSelected = group.radios.some(radio => radio.checked);
+                        if (!isSelected) {
+                            allValid = false;
+                            invalidFields.push({
+                                field: firstRadio,
+                                step: radioStep
+                            });
+                            console.log(`❌ Form validation failed for required radio group "${groupName}"`);
+                        }
+                    }
+                });
+            }
             
             if (allValid) {
                 console.log('✅ Entire form validation passed');
