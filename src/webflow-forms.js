@@ -4173,6 +4173,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             // Setup radio button group validation separately
             this.setupRadioGroupValidation(form);
             
+            // Setup conditional visibility system
+            this.setupConditionalVisibility(form);
+            
             // Setup form submission validation
             this.setupFormSubmissionValidation(form);
             
