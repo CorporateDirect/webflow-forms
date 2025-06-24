@@ -4960,14 +4960,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             const invalidFields = [];
             
             allRequiredFields.forEach(field => {
-                // Only validate visible fields in visible steps
+                // Only validate visible fields in visible steps and visible step_items
                 const fieldStep = field.closest('[data-form="step"]');
                 if (fieldStep && fieldStep.style.display !== 'none') {
-                    // Skip fields in hidden step_items (for branching forms)
+                    // Check if field is in a hidden step_item
                     const stepItem = field.closest('.step_item');
-                    if (stepItem && stepItem.offsetParent === null) {
-                        console.log(`🔍 Form validation skipping field ${field.id || field.name} - in hidden step_item`);
-                        return;
+                    if (stepItem) {
+                        const computedStyle = window.getComputedStyle(stepItem);
+                        const isStepItemVisible = stepItem.offsetParent !== null && 
+                                                 computedStyle.display !== 'none' &&
+                                                 computedStyle.visibility !== 'hidden' &&
+                                                 !stepItem.hidden;
+                        
+                        if (!isStepItemVisible) {
+                            console.log(`🔍 Form validation skipping field ${field.id || field.name} - in hidden step_item`);
+                            return; // Skip validation for fields in hidden step_items
+                        }
                     }
                     
                     const isFieldValid = this.validateField(field, showErrors);
@@ -4977,6 +4985,9 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                             field: field,
                             step: fieldStep
                         });
+                    }
+                }
+            });
                     }
                 }
             });
