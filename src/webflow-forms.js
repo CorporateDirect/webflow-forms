@@ -5007,7 +5007,7 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
         // Setup form submission validation
         setupFormSubmissionValidation: function(form) {
             // Find submit buttons
-            const submitButtons = form.querySelectorAll('[type="submit"], [data-form="submit-btn"]');
+            const submitButtons = form.querySelectorAll('[type="submit"], [data-form="submit-btn"], [data-form="submit"]');
             
             submitButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
