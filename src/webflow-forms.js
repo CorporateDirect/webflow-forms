@@ -4898,21 +4898,24 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 }
             });
             
-            // Validate conditional required fields (data-require-for-subtypes) - ONLY in visible step_items
+            // Validate conditional required fields (data-require-for-subtypes) - ONLY in active step_item
             const conditionalFields = this.branchingState.currentStep.querySelectorAll('[data-require-for-subtypes]:not([type="radio"])');
             conditionalFields.forEach(field => {
-                // Check if the field is within a visible step_item
-                const stepItem = field.closest('.step_item');
-                if (stepItem) {
-                    const computedStyle = window.getComputedStyle(stepItem);
-                    const isStepItemVisible = stepItem.offsetParent !== null && 
-                                             computedStyle.display !== 'none' &&
-                                             computedStyle.visibility !== 'hidden' &&
-                                             !stepItem.hidden;
+                // Handle branching logic for step_items
+                const fieldStepItem = field.closest('.step_item');
+                if (fieldStepItem) {
+                    const activeStepItem = this.getActiveStepItem(this.branchingState.currentStep);
                     
-                    if (!isStepItemVisible) {
-                        console.log(`🔍 Skipping field ${field.id || field.name} - in hidden step_item`);
-                        return; // Skip validation for fields in hidden step_items
+                    // If no selection has been made, skip validation
+                    if (activeStepItem === 'NO_SELECTION') {
+                        console.log(`🔍 Step validation skipping field ${field.id || field.name} - no step_item selected yet`);
+                        return;
+                    }
+                    
+                    // If field is not in the active step_item, skip it
+                    if (activeStepItem && fieldStepItem !== activeStepItem) {
+                        console.log(`🔍 Step validation skipping field ${field.id || field.name} - not in active step_item`);
+                        return;
                     }
                 }
                 
@@ -4963,11 +4966,22 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                 // Only validate visible fields in visible steps
                 const fieldStep = field.closest('[data-form="step"]');
                 if (fieldStep && fieldStep.style.display !== 'none') {
-                    // Skip fields in hidden step_items (for branching forms)
-                    const stepItem = field.closest('.step_item');
-                    if (stepItem && stepItem.offsetParent === null) {
-                        console.log(`🔍 Form validation skipping field ${field.id || field.name} - in hidden step_item`);
-                        return;
+                    // Handle branching logic for step_items
+                    const fieldStepItem = field.closest('.step_item');
+                    if (fieldStepItem) {
+                        const activeStepItem = this.getActiveStepItem(fieldStep);
+                        
+                        // If no selection has been made, skip validation entirely
+                        if (activeStepItem === 'NO_SELECTION') {
+                            console.log(`🔍 Form validation skipping field ${field.id || field.name} - no step_item selected yet`);
+                            return;
+                        }
+                        
+                        // If field is not in the active step_item, skip it
+                        if (activeStepItem && fieldStepItem !== activeStepItem) {
+                            console.log(`🔍 Form validation skipping field ${field.id || field.name} - not in active step_item`);
+                            return;
+                        }
                     }
                     
                     const isFieldValid = this.validateField(field, showErrors);
