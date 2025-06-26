@@ -363,6 +363,16 @@
                 let countryIso = this.getCountryIsoFromField(countryCodeField, countryCodeValue);
                 if (!countryIso) countryIso = 'US';
                 
+                // Clean the country code value (remove emoji flags and extra text)
+                let cleanCountryCode = countryCodeValue;
+                if (typeof countryCodeValue === 'string') {
+                    // Extract just the +XX part from strings like "🇺🇸 +1"
+                    const codeMatch = countryCodeValue.match(/\+\d+/);
+                    if (codeMatch) {
+                        cleanCountryCode = codeMatch[0];
+                    }
+                }
+                
                 if (typeof parsePhoneNumber === 'function') {
                     try {
                         const parsedNumber = parsePhoneNumber(phoneValue, countryIso);
@@ -374,7 +384,7 @@
                     }
                 }
                 
-                return this.fallbackPhoneFormat(phoneValue, countryCodeValue);
+                return this.fallbackPhoneFormat(phoneValue, cleanCountryCode);
             } catch (error) {
                 console.warn('Phone formatting error:', error);
                 return this.fallbackPhoneFormat(phoneValue, countryCodeValue);
@@ -390,13 +400,22 @@
             
             if (selectedOption.dataset.iso) return selectedOption.dataset.iso;
             
+            // Clean the country code value (remove emoji flags and extra text)
+            let cleanCountryCode = countryCodeValue;
+            if (typeof countryCodeValue === 'string') {
+                const codeMatch = countryCodeValue.match(/\+\d+/);
+                if (codeMatch) {
+                    cleanCountryCode = codeMatch[0];
+                }
+            }
+            
             const dialingCodeToIso = {
                 '+1': 'US', '+44': 'GB', '+33': 'FR', '+49': 'DE', '+81': 'JP',
                 '+86': 'CN', '+91': 'IN', '+55': 'BR', '+61': 'AU', '+7': 'RU'
             };
             
-            if (dialingCodeToIso[countryCodeValue]) {
-                return dialingCodeToIso[countryCodeValue];
+            if (dialingCodeToIso[cleanCountryCode]) {
+                return dialingCodeToIso[cleanCountryCode];
             }
             
             const optionText = selectedOption.text;
@@ -412,7 +431,15 @@
         // Fallback phone formatting
         fallbackPhoneFormat: function(phoneValue, countryCodeValue) {
             const cleanPhone = phoneValue.replace(/\D/g, '');
+            
+            // Clean the country code value (remove emoji flags and extra text)
             let countryCode = countryCodeValue || '+1';
+            if (typeof countryCode === 'string') {
+                const codeMatch = countryCode.match(/\+\d+/);
+                if (codeMatch) {
+                    countryCode = codeMatch[0];
+                }
+            }
             
             if (!countryCode.startsWith('+')) {
                 countryCode = '+' + countryCode;
@@ -425,7 +452,7 @@
             }
         },
 
-        // Find summary elements
+        // Find summary elements (with support for taxCollection -> taxClassification mapping)
         findSummaryElements: function(field, fieldName) {
             const summaryElements = [];
             const stepElement = field.closest('[data-step-type]');
@@ -452,7 +479,15 @@
             }
 
             summaryContainers.forEach(container => {
-                const summaryField = container.querySelector(`[data-summary-field="${fieldName}"]`);
+                // First try direct field name match
+                let summaryField = container.querySelector(`[data-summary-field="${fieldName}"]`);
+                
+                // Special mapping for taxCollection -> taxClassification
+                if (!summaryField && fieldName === 'taxCollection') {
+                    summaryField = container.querySelector(`[data-summary-field="taxClassification"]`);
+                    console.log(`🔄 Mapped taxCollection -> taxClassification for summary`);
+                }
+                
                 if (summaryField) {
                     summaryElements.push(summaryField);
                 }
@@ -498,7 +533,17 @@
             if (countryCodeField && countryCodeField.value) {
                 const selectedOption = countryCodeField.options[countryCodeField.selectedIndex];
                 if (selectedOption && selectedOption.value !== 'Another option') {
-                    countryCode = selectedOption.value;
+                    let rawCountryCode = selectedOption.value;
+                    
+                    // Clean the country code value (remove emoji flags and extra text)
+                    if (typeof rawCountryCode === 'string') {
+                        const codeMatch = rawCountryCode.match(/\+\d+/);
+                        if (codeMatch) {
+                            countryCode = codeMatch[0];
+                        } else {
+                            countryCode = rawCountryCode;
+                        }
+                    }
                 }
             }
             
