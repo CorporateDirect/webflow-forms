@@ -53,6 +53,241 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
             this.branchingState.validationErrors.clear();
         },
 
+        // Summary Card Management System
+        summaryCards: {
+            // Initialize summary card system
+            init: function() {
+                console.log('🔄 Initializing Summary Card System...');
+                this.setupSummaryListeners();
+                this.populateInitialSummaryValues();
+            },
+
+            // Set up event listeners for form field changes
+            setupSummaryListeners: function() {
+                const forms = document.querySelectorAll('[data-form="multistep"]');
+                
+                forms.forEach(form => {
+                    // Listen for all input changes
+                    form.addEventListener('input', (event) => {
+                        this.handleFieldChange(event.target);
+                    });
+                    
+                    // Listen for select changes
+                    form.addEventListener('change', (event) => {
+                        if (event.target.matches('select, input[type="radio"], input[type="checkbox"]')) {
+                            this.handleFieldChange(event.target);
+                        }
+                    });
+                    
+                    // Special handling for checkbox "same as main contact"
+                    form.addEventListener('change', (event) => {
+                        if (event.target.matches('[data-step-field-name="sameAsMainContact"]')) {
+                            this.handleSameAsMainContact(event.target);
+                        }
+                    });
+                });
+            },
+
+            // Handle individual field changes
+            handleFieldChange: function(field) {
+                const fieldName = field.dataset.stepFieldName || field.dataset.stepField;
+                if (!fieldName) return;
+
+                // Get field value
+                let value = this.getFieldValue(field);
+                
+                // Find corresponding summary elements
+                const summaryElements = this.findSummaryElements(field, fieldName);
+                
+                summaryElements.forEach(summaryElement => {
+                    this.updateSummaryDisplay(summaryElement, value, field);
+                });
+
+                console.log(`📊 Updated summary for field: ${fieldName} = "${value}"`);
+            },
+
+            // Get the appropriate value from a field
+            getFieldValue: function(field) {
+                if (field.type === 'radio') {
+                    // For radio buttons, find the checked one in the group
+                    const checkedRadio = document.querySelector(`input[name="${field.name}"]:checked`);
+                    return checkedRadio ? checkedRadio.value : '';
+                } else if (field.type === 'checkbox') {
+                    return field.checked ? (field.value || 'Yes') : 'No';
+                } else if (field.tagName.toLowerCase() === 'select') {
+                    const selectedOption = field.options[field.selectedIndex];
+                    return selectedOption ? selectedOption.text : '';
+                } else {
+                    return field.value || '';
+                }
+            },
+
+            // Find summary elements that should be updated for a given field
+            findSummaryElements: function(field, fieldName) {
+                const summaryElements = [];
+                
+                // Get the step context
+                const stepElement = field.closest('[data-step-type]');
+                if (!stepElement) return summaryElements;
+
+                const stepType = stepElement.dataset.stepType;
+                const stepNumber = stepElement.dataset.stepNumber || '1';
+                const stepSubtype = stepElement.dataset.stepSubtype;
+
+                // Find matching summary containers
+                const summaryContainers = document.querySelectorAll(
+                    `[data-summary-type="${stepType}"][data-summary-number="${stepNumber}"]`
+                );
+
+                summaryContainers.forEach(container => {
+                    // Check if subtype matches (if specified)
+                    if (stepSubtype && container.dataset.summarySubtype && 
+                        container.dataset.summarySubtype !== stepSubtype) {
+                        return; // Skip if subtypes don't match
+                    }
+
+                    // Find the specific field element within this container
+                    const summaryField = container.querySelector(`[data-summary-field="${fieldName}"]`);
+                    if (summaryField) {
+                        summaryElements.push(summaryField);
+                    }
+                });
+
+                return summaryElements;
+            },
+
+            // Update the summary display element
+            updateSummaryDisplay: function(summaryElement, value, sourceField) {
+                // Special formatting for different field types
+                let displayValue = value;
+
+                // Phone number formatting
+                if (sourceField.type === 'tel' || sourceField.dataset.stepFieldName === 'phone') {
+                    displayValue = this.formatPhoneForSummary(value, sourceField);
+                }
+
+                // Email formatting
+                if (sourceField.type === 'email' || sourceField.dataset.stepFieldName === 'email') {
+                    displayValue = value || 'email@example.com';
+                }
+
+                // Country code handling
+                if (sourceField.dataset.stepFieldName === 'countryCode') {
+                    const countryName = sourceField.options[sourceField.selectedIndex]?.text || value;
+                    displayValue = countryName;
+                }
+
+                // Update the summary element
+                summaryElement.textContent = displayValue || this.getPlaceholderText(sourceField.dataset.stepFieldName);
+                
+                // Add updated class for visual feedback (optional)
+                summaryElement.classList.add('summary-updated');
+                setTimeout(() => {
+                    summaryElement.classList.remove('summary-updated');
+                }, 2000);
+            },
+
+            // Format phone number for summary display
+            formatPhoneForSummary: function(phoneValue, sourceField) {
+                if (!phoneValue) return '+1 (xxx) xxx-xxxx';
+                
+                // Try to get country code from nearby field
+                const stepElement = sourceField.closest('[data-step-type]');
+                const countryCodeField = stepElement?.querySelector('[data-step-field-name="countryCode"]');
+                const countryCode = countryCodeField?.value || '+1';
+                
+                // Basic formatting - you might want to enhance this with libphonenumber
+                if (phoneValue.length >= 10) {
+                    const cleaned = phoneValue.replace(/\D/g, '');
+                    if (cleaned.length === 10) {
+                        return `${countryCode} (${cleaned.substr(0,3)}) ${cleaned.substr(3,3)}-${cleaned.substr(6,4)}`;
+                    }
+                }
+                
+                return `${countryCode} ${phoneValue}`;
+            },
+
+            // Handle "same as main contact" checkbox
+            handleSameAsMainContact: function(checkbox) {
+                if (!checkbox.checked) return;
+
+                const memberContainer = checkbox.closest('[data-step-type="member"]');
+                if (!memberContainer) return;
+
+                // Find main contact data
+                const mainContactData = this.getMainContactData();
+                
+                // Update member fields with main contact data
+                Object.keys(mainContactData).forEach(fieldName => {
+                    if (['firstName', 'lastName', 'email', 'address', 'city', 'state', 'country', 'postalCode', 'phone'].includes(fieldName)) {
+                        const memberField = memberContainer.querySelector(`[data-step-field-name="${fieldName}"]`);
+                        if (memberField) {
+                            memberField.value = mainContactData[fieldName];
+                            this.handleFieldChange(memberField);
+                        }
+                    }
+                });
+            },
+
+            // Get main contact data from form
+            getMainContactData: function() {
+                const mainContactContainer = document.querySelector('[data-step-type="contact"][data-step-subtype="info"]');
+                if (!mainContactContainer) return {};
+
+                const data = {};
+                const fields = mainContactContainer.querySelectorAll('[data-step-field-name]');
+                
+                fields.forEach(field => {
+                    const fieldName = field.dataset.stepFieldName;
+                    data[fieldName] = this.getFieldValue(field);
+                });
+
+                return data;
+            },
+
+            // Get placeholder text for empty fields
+            getPlaceholderText: function(fieldName) {
+                const placeholders = {
+                    firstName: 'First Name',
+                    lastName: 'Last Name',
+                    email: 'email@example.com',
+                    address: '123 Main St',
+                    city: 'City',
+                    state: 'State',
+                    country: 'Country',
+                    postalCode: '12345',
+                    phone: '+1 (xxx) xxx-xxxx',
+                    companyName1: 'Company Name',
+                    companyName2: 'Company Name 2',
+                    companyName3: 'Company Name 3',
+                    extension: 'LLC',
+                    entityName: 'Entity Name',
+                    trustName: 'Trust Name',
+                    managerName: 'Manager Name'
+                };
+                
+                return placeholders[fieldName] || 'Not specified';
+            },
+
+            // Populate initial summary values from existing form data
+            populateInitialSummaryValues: function() {
+                console.log('📋 Populating initial summary values...');
+                
+                const allFields = document.querySelectorAll('[data-step-field-name], [data-step-field]');
+                allFields.forEach(field => {
+                    if (field.value || (field.type === 'radio' && field.checked) || (field.type === 'checkbox' && field.checked)) {
+                        this.handleFieldChange(field);
+                    }
+                });
+            },
+
+            // Manual trigger for updating all summaries (useful for debugging)
+            updateAllSummaries: function() {
+                console.log('🔄 Manually updating all summaries...');
+                this.populateInitialSummaryValues();
+            }
+        },
+
         // Get flag emoji for country ISO code
         getCountryFlag: function(isoCode) {
             if (!isoCode || isoCode.length !== 2) return '';
@@ -5677,6 +5912,251 @@ import { AsYouType, getExampleNumber, parsePhoneNumber, getCountries, getCountry
                     validationData.errorElement.style.display = 'none';
                 }
             }
+        },
+
+        // Summary Card Management System
+        summaryCards: {
+            // Initialize summary card system
+            init: function() {
+                console.log('🔄 Initializing Summary Card System...');
+                this.setupSummaryListeners();
+                this.populateInitialSummaryValues();
+            },
+
+            // Set up event listeners for form field changes
+            setupSummaryListeners: function() {
+                const forms = document.querySelectorAll('[data-form="multistep"]');
+                
+                forms.forEach(form => {
+                    // Listen for all input changes
+                    form.addEventListener('input', (event) => {
+                        this.handleFieldChange(event.target);
+                    });
+                    
+                    // Listen for select changes
+                    form.addEventListener('change', (event) => {
+                        if (event.target.matches('select, input[type="radio"], input[type="checkbox"]')) {
+                            this.handleFieldChange(event.target);
+                        }
+                    });
+                    
+                    // Special handling for checkbox "same as main contact"
+                    form.addEventListener('change', (event) => {
+                        if (event.target.matches('[data-step-field-name="sameAsMainContact"]')) {
+                            this.handleSameAsMainContact(event.target);
+                        }
+                    });
+                });
+            },
+
+            // Handle individual field changes
+            handleFieldChange: function(field) {
+                const fieldName = field.dataset.stepFieldName || field.dataset.stepField;
+                if (!fieldName) return;
+
+                // Get field value
+                let value = this.getFieldValue(field);
+                
+                // Find corresponding summary elements
+                const summaryElements = this.findSummaryElements(field, fieldName);
+                
+                summaryElements.forEach(summaryElement => {
+                    this.updateSummaryDisplay(summaryElement, value, field);
+                });
+
+                console.log(`📊 Updated summary for field: ${fieldName} = "${value}"`);
+            },
+
+            // Get the appropriate value from a field
+            getFieldValue: function(field) {
+                if (field.type === 'radio') {
+                    // For radio buttons, find the checked one in the group
+                    const checkedRadio = document.querySelector(`input[name="${field.name}"]:checked`);
+                    return checkedRadio ? checkedRadio.value : '';
+                } else if (field.type === 'checkbox') {
+                    return field.checked ? (field.value || 'Yes') : 'No';
+                } else if (field.tagName.toLowerCase() === 'select') {
+                    const selectedOption = field.options[field.selectedIndex];
+                    return selectedOption ? selectedOption.text : '';
+                } else {
+                    return field.value || '';
+                }
+            },
+
+            // Find summary elements that should be updated for a given field
+            findSummaryElements: function(field, fieldName) {
+                const summaryElements = [];
+                
+                // Get the step context
+                const stepElement = field.closest('[data-step-type]');
+                if (!stepElement) return summaryElements;
+
+                const stepType = stepElement.dataset.stepType;
+                const stepNumber = stepElement.dataset.stepNumber || '1';
+                const stepSubtype = stepElement.dataset.stepSubtype;
+
+                // Find matching summary containers
+                const summaryContainers = document.querySelectorAll(
+                    `[data-summary-type="${stepType}"][data-summary-number="${stepNumber}"]`
+                );
+
+                summaryContainers.forEach(container => {
+                    // Check if subtype matches (if specified)
+                    if (stepSubtype && container.dataset.summarySubtype && 
+                        container.dataset.summarySubtype !== stepSubtype) {
+                        return; // Skip if subtypes don't match
+                    }
+
+                    // Find the specific field element within this container
+                    const summaryField = container.querySelector(`[data-summary-field="${fieldName}"]`);
+                    if (summaryField) {
+                        summaryElements.push(summaryField);
+                    }
+                });
+
+                return summaryElements;
+            },
+
+            // Update the summary display element
+            updateSummaryDisplay: function(summaryElement, value, sourceField) {
+                // Special formatting for different field types
+                let displayValue = value;
+
+                // Phone number formatting
+                if (sourceField.type === 'tel' || sourceField.dataset.stepFieldName === 'phone') {
+                    displayValue = this.formatPhoneForSummary(value, sourceField);
+                }
+
+                // Email formatting
+                if (sourceField.type === 'email' || sourceField.dataset.stepFieldName === 'email') {
+                    displayValue = value || 'email@example.com';
+                }
+
+                // Country code handling
+                if (sourceField.dataset.stepFieldName === 'countryCode') {
+                    const countryName = sourceField.options[sourceField.selectedIndex]?.text || value;
+                    displayValue = countryName;
+                }
+
+                // Update the summary element
+                summaryElement.textContent = displayValue || this.getPlaceholderText(sourceField.dataset.stepFieldName);
+                
+                // Add updated class for visual feedback (optional)
+                summaryElement.classList.add('summary-updated');
+                setTimeout(() => {
+                    summaryElement.classList.remove('summary-updated');
+                }, 2000);
+            },
+
+            // Format phone number for summary display
+            formatPhoneForSummary: function(phoneValue, sourceField) {
+                if (!phoneValue) return '+1 (xxx) xxx-xxxx';
+                
+                // Try to get country code from nearby field
+                const stepElement = sourceField.closest('[data-step-type]');
+                const countryCodeField = stepElement?.querySelector('[data-step-field-name="countryCode"]');
+                const countryCode = countryCodeField?.value || '+1';
+                
+                // Basic formatting - you might want to enhance this with libphonenumber
+                if (phoneValue.length >= 10) {
+                    const cleaned = phoneValue.replace(/\D/g, '');
+                    if (cleaned.length === 10) {
+                        return `${countryCode} (${cleaned.substr(0,3)}) ${cleaned.substr(3,3)}-${cleaned.substr(6,4)}`;
+                    }
+                }
+                
+                return `${countryCode} ${phoneValue}`;
+            },
+
+            // Handle "same as main contact" checkbox
+            handleSameAsMainContact: function(checkbox) {
+                if (!checkbox.checked) return;
+
+                const memberContainer = checkbox.closest('[data-step-type="member"]');
+                if (!memberContainer) return;
+
+                // Find main contact data
+                const mainContactData = this.getMainContactData();
+                
+                // Update member fields with main contact data
+                Object.keys(mainContactData).forEach(fieldName => {
+                    if (['firstName', 'lastName', 'email', 'address', 'city', 'state', 'country', 'postalCode', 'phone'].includes(fieldName)) {
+                        const memberField = memberContainer.querySelector(`[data-step-field-name="${fieldName}"]`);
+                        if (memberField) {
+                            memberField.value = mainContactData[fieldName];
+                            this.handleFieldChange(memberField);
+                        }
+                    }
+                });
+            },
+
+            // Get main contact data from form
+            getMainContactData: function() {
+                const mainContactContainer = document.querySelector('[data-step-type="contact"][data-step-subtype="info"]');
+                if (!mainContactContainer) return {};
+
+                const data = {};
+                const fields = mainContactContainer.querySelectorAll('[data-step-field-name]');
+                
+                fields.forEach(field => {
+                    const fieldName = field.dataset.stepFieldName;
+                    data[fieldName] = this.getFieldValue(field);
+                });
+
+                return data;
+            },
+
+            // Get placeholder text for empty fields
+            getPlaceholderText: function(fieldName) {
+                const placeholders = {
+                    firstName: 'First Name',
+                    lastName: 'Last Name',
+                    email: 'email@example.com',
+                    address: '123 Main St',
+                    city: 'City',
+                    state: 'State',
+                    country: 'Country',
+                    postalCode: '12345',
+                    phone: '+1 (xxx) xxx-xxxx',
+                    companyName1: 'Company Name',
+                    companyName2: 'Company Name 2',
+                    companyName3: 'Company Name 3',
+                    extension: 'LLC',
+                    entityName: 'Entity Name',
+                    trustName: 'Trust Name',
+                    managerName: 'Manager Name'
+                };
+                
+                return placeholders[fieldName] || 'Not specified';
+            },
+
+            // Populate initial summary values from existing form data
+            populateInitialSummaryValues: function() {
+                console.log('📋 Populating initial summary values...');
+                
+                const allFields = document.querySelectorAll('[data-step-field-name], [data-step-field]');
+                allFields.forEach(field => {
+                    if (field.value || (field.type === 'radio' && field.checked) || (field.type === 'checkbox' && field.checked)) {
+                        this.handleFieldChange(field);
+                    }
+                });
+            },
+
+            // Manual trigger for updating all summaries (useful for debugging)
+            updateAllSummaries: function() {
+                console.log('🔄 Manually updating all summaries...');
+                this.populateInitialSummaryValues();
+            }
+        },
+
+        // Clear caches (useful for debugging)
+        clearCaches: function() {
+            this.countryDataCache = null;
+            this.phoneFormatCache.clear();
+            this.branchingState.conditionalSteps.clear();
+            this.branchingState.branchingRules.clear();
+            this.branchingState.stepHistory = [];
+            this.branchingState.validationErrors.clear();
         }
     };
 
