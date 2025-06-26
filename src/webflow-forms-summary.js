@@ -1,21 +1,22 @@
 /**
- * Webflow Forms - Summary Card Extension V2 (Safe Mode)
- * Handles real-time summary card updates without interfering with main library
- * @version 1.0.1
+ * Webflow Forms - Summary Card Extension V6 (Step Advancement Visibility)
+ * Summary cards only become visible after input events AND step advancement
+ * @version 1.0.6
  * @author Chris Brummer
  */
 
 (function(window, document) {
     'use strict';
 
-    // Summary Card Manager (Safe Mode)
+    // Summary Card Manager with Step Advancement Visibility
     const WebflowSummaryCards = {
-        version: '1.0.1-safe',
+        version: '1.0.6-advancement',
         mainLibraryReady: false,
+        stepStates: new Map(), // Track step states: UNTOUCHED, TOUCHED, COMPLETED
         
-        // Initialize the summary card system (safe mode)
+        // Initialize the summary card system
         init: function() {
-            console.log('🔄 Summary Cards V2 (Safe Mode) starting...');
+            console.log('🔄 Summary Cards V6 (Step Advancement Visibility) starting...');
             
             // Wait for main library AND form to be fully initialized
             const waitForReadiness = () => {
@@ -46,9 +47,9 @@
             }
         },
 
-        // Setup with minimal interference
+        // Setup with step advancement tracking
         setup: function() {
-            console.log('🔄 Initializing Summary Card System (Safe Mode)...');
+            console.log('🔄 Initializing Summary Card System with Step Advancement Visibility...');
             
             // Only setup if main library is confirmed ready
             if (!this.mainLibraryReady) {
@@ -56,7 +57,9 @@
                 return;
             }
             
-            this.setupSafeEventListeners();
+            this.initializeStepStates();
+            this.setupAdvancementEventListeners();
+            this.setupFieldEventListeners();
             
             // Delay initial population to avoid conflicts
             setTimeout(() => {
@@ -64,12 +67,144 @@
             }, 500);
         },
 
-        // Ultra-safe event listeners that don't interfere
-        setupSafeEventListeners: function() {
+        // Initialize step states (all start as UNTOUCHED)
+        initializeStepStates: function() {
+            const steps = document.querySelectorAll('[data-step-type]');
+            steps.forEach(step => {
+                const stepKey = this.getStepKey(step);
+                this.stepStates.set(stepKey, 'UNTOUCHED');
+                console.log(`📝 Initialized step state: ${stepKey} = UNTOUCHED`);
+            });
+        },
+
+        // Get unique step key
+        getStepKey: function(stepElement) {
+            const stepType = stepElement.dataset.stepType;
+            const stepNumber = stepElement.dataset.stepNumber || '1';
+            const stepSubtype = stepElement.dataset.stepSubtype || '';
+            return `${stepType}-${stepNumber}-${stepSubtype}`;
+        },
+
+        // Setup step advancement listeners
+        setupAdvancementEventListeners: function() {
+            // Listen for step navigation (when user advances to next step)
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && 
+                        (mutation.attributeName === 'style' || 
+                         mutation.attributeName === 'class')) {
+                        
+                        const element = mutation.target;
+                        if (element.matches('[data-form="step"]')) {
+                            this.handleStepVisibilityChange(element);
+                        }
+                    }
+                });
+            });
+
+            // Observe all step elements for visibility changes
+            const steps = document.querySelectorAll('[data-form="step"]');
+            steps.forEach(step => {
+                observer.observe(step, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class']
+                });
+            });
+
+            // Also listen for click events on next buttons
+            document.addEventListener('click', (event) => {
+                if (event.target.matches('[data-form="next-btn"]') || 
+                    event.target.closest('[data-form="next-btn"]')) {
+                    
+                    setTimeout(() => {
+                        this.markCurrentStepAsCompleted();
+                    }, 100);
+                }
+            }, { passive: true });
+        },
+
+        // Handle step visibility changes
+        handleStepVisibilityChange: function(stepElement) {
+            const isVisible = this.isElementVisible(stepElement);
+            
+            if (!isVisible) {
+                // Step became hidden - mark any touched steps in this element as completed
+                const stepContainers = stepElement.querySelectorAll('[data-step-type]');
+                stepContainers.forEach(container => {
+                    const stepKey = this.getStepKey(container);
+                    const currentState = this.stepStates.get(stepKey);
+                    
+                    if (currentState === 'TOUCHED') {
+                        this.stepStates.set(stepKey, 'COMPLETED');
+                        console.log(`✅ Step completed: ${stepKey} (hidden)`);
+                        this.updateSummaryVisibility(stepKey);
+                    }
+                });
+            }
+        },
+
+        // Check if element is visible
+        isElementVisible: function(element) {
+            return element.offsetHeight > 0 && 
+                   element.offsetWidth > 0 && 
+                   !element.hasAttribute('hidden') &&
+                   !element.classList.contains('w-hidden');
+        },
+
+        // Mark current step as completed
+        markCurrentStepAsCompleted: function() {
+            const currentStep = document.querySelector('[data-form="step"]:not([style*="display: none"]):not(.w-hidden)');
+            if (!currentStep) return;
+
+            const stepContainers = currentStep.querySelectorAll('[data-step-type]');
+            stepContainers.forEach(container => {
+                const stepKey = this.getStepKey(container);
+                const currentState = this.stepStates.get(stepKey);
+                
+                if (currentState === 'TOUCHED') {
+                    this.stepStates.set(stepKey, 'COMPLETED');
+                    console.log(`✅ Step completed: ${stepKey} (next button)`);
+                    this.updateSummaryVisibility(stepKey);
+                }
+            });
+        },
+
+        // Update summary visibility based on step completion
+        updateSummaryVisibility: function(stepKey) {
+            const [stepType, stepNumber, stepSubtype] = stepKey.split('-');
+            
+            // Find corresponding summary containers
+            let summaryContainers = document.querySelectorAll(
+                `[data-summary-type="${stepType}"][data-summary-number="${stepNumber}"][data-summary-subtype="${stepSubtype}"]`
+            );
+
+            if (summaryContainers.length === 0) {
+                summaryContainers = document.querySelectorAll(
+                    `[data-summary-type="${stepType}"][data-summary-number="${stepNumber}"]`
+                );
+            }
+
+            if (summaryContainers.length === 0) {
+                summaryContainers = document.querySelectorAll(
+                    `[data-summary-type="${stepType}"]`
+                );
+            }
+
+            // Show summary containers
+            summaryContainers.forEach(container => {
+                container.style.display = 'block';
+                container.classList.remove('w-hidden');
+                container.classList.add('summary-visible');
+                console.log(`👁️ Summary visible: ${stepKey}`);
+            });
+        },
+
+        // Setup field event listeners
+        setupFieldEventListeners: function() {
             const forms = document.querySelectorAll('[data-form="multistep"]');
             
             forms.forEach(form => {
-                console.log('📋 Setting up SAFE summary listeners for form:', form.id || 'unnamed');
+                console.log('📋 Setting up field listeners for form:', form.id || 'unnamed');
                 
                 // Use delegated event listeners on document to avoid conflicts
                 document.addEventListener('input', (event) => {
@@ -101,7 +236,7 @@
             });
         },
 
-        // Very strict field filtering
+        // Field filtering
         shouldHandleField: function(field) {
             // Only handle fields with our specific data attributes
             const hasStepFieldName = field.dataset.stepFieldName || field.dataset.stepField;
@@ -130,13 +265,25 @@
             return hasStepFieldName && !isFormControl && !isStepHidden;
         },
 
-        // Rest of the methods remain the same but with safety checks
+        // Handle field changes and mark step as touched
         handleFieldChange: function(field) {
             // Safety check - don't run if main library might be processing
             if (!this.mainLibraryReady) return;
             
             const fieldName = field.dataset.stepFieldName || field.dataset.stepField;
             if (!fieldName) return;
+
+            // Mark step as touched
+            const stepElement = field.closest('[data-step-type]');
+            if (stepElement) {
+                const stepKey = this.getStepKey(stepElement);
+                const currentState = this.stepStates.get(stepKey);
+                
+                if (currentState === 'UNTOUCHED') {
+                    this.stepStates.set(stepKey, 'TOUCHED');
+                    console.log(`👆 Step touched: ${stepKey}`);
+                }
+            }
 
             try {
                 let value = this.getFieldValue(field);
@@ -210,7 +357,7 @@
 
         // Format international phone number
         formatInternationalPhone: function(phoneValue, countryCodeValue, countryCodeField) {
-            if (!phoneValue) return '+1 (xxx) xxx-xxxx';
+            if (!phoneValue) return '';
             
             try {
                 let countryIso = this.getCountryIsoFromField(countryCodeField, countryCodeValue);
@@ -314,7 +461,7 @@
             return summaryElements;
         },
 
-        // Update summary display
+        // Update summary display (no placeholders for empty fields)
         updateSummaryDisplay: function(summaryElement, value, sourceField) {
             if (!this.mainLibraryReady) return;
             
@@ -322,19 +469,17 @@
 
             if (sourceField.type === 'tel' || sourceField.dataset.stepFieldName === 'phone') {
                 displayValue = this.formatPhoneForSummary(value, sourceField);
-            } else if (sourceField.type === 'email' || sourceField.dataset.stepFieldName === 'email') {
-                displayValue = value || 'email@example.com';
             } else if (sourceField.dataset.stepFieldName === 'countryCode') {
                 const countryName = sourceField.options[sourceField.selectedIndex]?.text || value;
                 displayValue = countryName;
             } else if (sourceField.type === 'checkbox' && sourceField.dataset.stepFieldName !== 'sameAsMainContact') {
                 displayValue = sourceField.checked ? 'Yes' : 'No';
             } else if (sourceField.type === 'radio') {
-                displayValue = value || 'Not selected';
+                displayValue = value || '';
             }
 
-            const finalValue = displayValue || this.getPlaceholderText(sourceField.dataset.stepFieldName || sourceField.dataset.stepField);
-            summaryElement.textContent = finalValue;
+            // Key change: Empty fields remain empty (no placeholder text)
+            summaryElement.textContent = displayValue || '';
             
             summaryElement.classList.add('summary-updated');
             setTimeout(() => {
@@ -344,7 +489,7 @@
 
         // Format phone for summary
         formatPhoneForSummary: function(phoneValue, sourceField) {
-            if (!phoneValue) return '+1 (xxx) xxx-xxxx';
+            if (!phoneValue) return '';
             
             const stepElement = sourceField.closest('[data-step-type]');
             const countryCodeField = stepElement?.querySelector('[data-step-field-name="countryCode"]');
@@ -367,25 +512,38 @@
             return `${countryCode} ${phoneValue}`;
         },
 
-        // Handle same as main contact
+        // Handle same as main contact (only for individual member steps)
         handleSameAsMainContact: function(checkbox) {
             if (!this.mainLibraryReady || !checkbox.checked) return;
             
+            // Only available on individual member steps
             const memberContainer = checkbox.closest('[data-step-type="member"]');
             if (!memberContainer) return;
 
             const mainContactData = this.getMainContactData();
+            
+            // Mark step as touched when "same as main contact" is used
+            const stepKey = this.getStepKey(memberContainer);
+            const currentState = this.stepStates.get(stepKey);
+            
+            if (currentState === 'UNTOUCHED') {
+                this.stepStates.set(stepKey, 'TOUCHED');
+                console.log(`👆 Step touched (same as main): ${stepKey}`);
+            }
             
             Object.keys(mainContactData).forEach(fieldName => {
                 if (['firstName', 'lastName', 'email', 'address', 'city', 'state', 'country', 'postalCode', 'phone'].includes(fieldName)) {
                     const memberField = memberContainer.querySelector(`[data-step-field-name="${fieldName}"]`);
                     if (memberField) {
                         memberField.value = mainContactData[fieldName];
+                        // Trigger change event to ensure summary is updated
                         const changeEvent = new Event('input', { bubbles: true });
                         memberField.dispatchEvent(changeEvent);
                     }
                 }
             });
+            
+            console.log('✅ Same as main contact applied');
         },
 
         // Get main contact data
@@ -406,35 +564,11 @@
             return data;
         },
 
-        // Get placeholder text
-        getPlaceholderText: function(fieldName) {
-            const placeholders = {
-                firstName: 'First Name',
-                lastName: 'Last Name',
-                email: 'email@example.com',
-                address: '123 Main St',
-                city: 'City',
-                state: 'State',
-                country: 'Country',
-                postalCode: '12345',
-                phone: '+1 (xxx) xxx-xxxx',
-                companyName1: 'Company Name',
-                companyName2: 'Company Name 2',
-                companyName3: 'Company Name 3',
-                extension: 'LLC',
-                entityName: 'Entity Name',
-                trustName: 'Trust Name',
-                managerName: 'Manager Name'
-            };
-            
-            return placeholders[fieldName] || 'Not specified';
-        },
-
-        // Populate initial values (safe)
+        // Populate initial values (for already completed steps)
         populateInitialValues: function() {
             if (!this.mainLibraryReady) return;
             
-            console.log('📋 Populating initial summary values (safe mode)...');
+            console.log('📋 Populating initial summary values...');
             
             const allFields = document.querySelectorAll('[data-step-field-name], [data-step-field]');
             let populatedCount = 0;
@@ -453,11 +587,11 @@
         }
     };
 
-    // Only auto-initialize if this is the safe version
-    console.log('📦 Loading Summary Cards V2 (Safe Mode)');
+    // Auto-initialize
+    console.log('📦 Loading Summary Cards V6 (Step Advancement Visibility)');
     WebflowSummaryCards.init();
 
     // Export to global scope
-    window.WebflowSummaryCardsSafe = WebflowSummaryCards;
+    window.WebflowSummaryCards = WebflowSummaryCards;
 
-})(window, document); 
+})(window, document);
