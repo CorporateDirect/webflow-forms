@@ -1,0 +1,252 @@
+/**
+ * DEBUG VERSION - Comprehensive Analysis
+ */
+(function() {
+    'use strict';
+
+    console.log('🔍 =================================================================');
+    console.log('🔍 COMPREHENSIVE DEBUG ANALYSIS - Form Inputs & Summary Outputs');
+    console.log('🔍 =================================================================');
+
+    function getFieldValue(field) {
+        if (field.type === 'radio') {
+            const checkedRadio = document.querySelector(`input[name="${field.name}"]:checked`);
+            return checkedRadio ? checkedRadio.value : '';
+        } else if (field.type === 'checkbox') {
+            return field.checked ? (field.value || 'Yes') : '';
+        } else if (field.tagName.toLowerCase() === 'select') {
+            const selectedOption = field.options[field.selectedIndex];
+            return selectedOption ? selectedOption.text : '';
+        } else {
+            return field.value || '';
+        }
+    }
+
+    function analyzeAllInputs() {
+        console.log('🔍 ANALYZING ALL FORM INPUTS:');
+        console.log('─────────────────────────────────────────────────────────────────');
+        
+        const allInputs = document.querySelectorAll(`
+            input[data-step-field-name], 
+            select[data-step-field-name], 
+            textarea[data-step-field-name],
+            input[data-step-field],
+            select[data-step-field],
+            textarea[data-step-field]
+        `);
+        
+        console.log(`📊 TOTAL FORM INPUTS FOUND: ${allInputs.length}`);
+        
+        Array.from(allInputs).forEach((input, index) => {
+            const stepContainer = input.closest('[data-step-type]');
+            const fieldName = input.dataset.stepFieldName || input.dataset.stepField;
+            
+            console.log(`📝 INPUT ${index + 1}:`, {
+                fieldName: fieldName,
+                type: input.type || input.tagName.toLowerCase(),
+                name: input.name,
+                currentValue: getFieldValue(input),
+                stepType: stepContainer?.dataset.stepType,
+                stepNumber: stepContainer?.dataset.stepNumber,
+                stepSubtype: stepContainer?.dataset.stepSubtype,
+                element: input
+            });
+        });
+    }
+
+    function analyzeSummaryOutputs() {
+        console.log('🔍 ANALYZING ALL SUMMARY OUTPUTS:');
+        console.log('─────────────────────────────────────────────────────────────────');
+        
+        const allSummaryFields = document.querySelectorAll('[data-summary-field]');
+        
+        console.log(`📊 TOTAL SUMMARY OUTPUTS FOUND: ${allSummaryFields.length}`);
+        
+        Array.from(allSummaryFields).forEach((output, index) => {
+            const summaryContainer = output.closest('[data-summary-type]');
+            const fieldName = output.dataset.summaryField;
+            
+            console.log(`📋 OUTPUT ${index + 1}:`, {
+                fieldName: fieldName,
+                currentText: output.textContent?.trim(),
+                summaryType: summaryContainer?.dataset.summaryType,
+                summaryNumber: summaryContainer?.dataset.summaryNumber,
+                summarySubtype: summaryContainer?.dataset.summarySubtype,
+                element: output
+            });
+        });
+    }
+
+    function analyzeEntitySelections() {
+        console.log('🔍 ANALYZING ENTITY SELECTIONS:');
+        console.log('─────────────────────────────────────────────────────────────────');
+        
+        // Look for all possible entity-related fields
+        const entityFields = document.querySelectorAll(`
+            [data-step-field-name*="Type"],
+            [data-step-field-name*="type"],
+            input[name*="member"],
+            input[name*="entity"],
+            input[name*="management"],
+            input[value="Individual"],
+            input[value="Entity"],
+            select option[value="Individual"],
+            select option[value="Entity"]
+        `);
+        
+        console.log(`📊 ENTITY-RELATED FIELDS FOUND: ${entityFields.length}`);
+        
+        Array.from(entityFields).forEach((field, index) => {
+            const fieldName = field.dataset.stepFieldName || field.dataset.stepField;
+            const stepContainer = field.closest('[data-step-type]');
+            
+            console.log(`🏢 ENTITY FIELD ${index + 1}:`, {
+                fieldName: fieldName,
+                name: field.name,
+                type: field.type,
+                value: field.value,
+                textContent: field.textContent,
+                currentValue: getFieldValue(field),
+                checked: field.checked,
+                selected: field.selected,
+                stepType: stepContainer?.dataset.stepType,
+                stepNumber: stepContainer?.dataset.stepNumber,
+                stepSubtype: stepContainer?.dataset.stepSubtype,
+                element: field
+            });
+        });
+    }
+
+    function analyzeChildEntities() {
+        console.log('🔍 ANALYZING CHILD ENTITIES:');
+        console.log('─────────────────────────────────────────────────────────────────');
+        
+        // Form containers
+        const childEntityContainers = document.querySelectorAll('[data-step-type="child-entity"]');
+        console.log(`📊 CHILD ENTITY FORM CONTAINERS: ${childEntityContainers.length}`);
+        
+        Array.from(childEntityContainers).forEach((container, index) => {
+            console.log(`👶 CHILD ENTITY FORM ${index + 1}:`, {
+                stepType: container.dataset.stepType,
+                stepNumber: container.dataset.stepNumber,
+                stepSubtype: container.dataset.stepSubtype
+            });
+            
+            const childFields = container.querySelectorAll('[data-step-field-name], [data-step-field]');
+            console.log(`   └─ Fields in container: ${childFields.length}`);
+            
+            Array.from(childFields).forEach((field, fieldIndex) => {
+                const fieldName = field.dataset.stepFieldName || field.dataset.stepField;
+                console.log(`      └─ Field ${fieldIndex + 1}: ${fieldName} = "${getFieldValue(field)}"`);
+            });
+        });
+        
+        // Summary containers
+        const childSummaryContainers = document.querySelectorAll('[data-summary-type="child-entity"]');
+        console.log(`📊 CHILD ENTITY SUMMARY CONTAINERS: ${childSummaryContainers.length}`);
+        
+        Array.from(childSummaryContainers).forEach((container, index) => {
+            console.log(`👶 CHILD ENTITY SUMMARY ${index + 1}:`, {
+                summaryType: container.dataset.summaryType,
+                summaryNumber: container.dataset.summaryNumber,
+                summarySubtype: container.dataset.summarySubtype
+            });
+            
+            const summaryFields = container.querySelectorAll('[data-summary-field]');
+            Array.from(summaryFields).forEach((field, fieldIndex) => {
+                console.log(`      └─ Summary ${fieldIndex + 1}: ${field.dataset.summaryField} = "${field.textContent?.trim()}"`);
+            });
+        });
+    }
+
+    function analyzeMatching() {
+        console.log('🔍 ANALYZING INPUT → OUTPUT MATCHING:');
+        console.log('─────────────────────────────────────────────────────────────────');
+        
+        const allInputs = document.querySelectorAll(`
+            input[data-step-field-name], select[data-step-field-name], textarea[data-step-field-name],
+            input[data-step-field], select[data-step-field], textarea[data-step-field]
+        `);
+        
+        const allSummaryFields = document.querySelectorAll('[data-summary-field]');
+        
+        let matchedPairs = 0;
+        let unmatchedInputs = 0;
+        
+        Array.from(allInputs).forEach((input, inputIndex) => {
+            const fieldName = input.dataset.stepFieldName || input.dataset.stepField;
+            const stepContainer = input.closest('[data-step-type]');
+            
+            if (!stepContainer) {
+                console.log(`❌ INPUT ${inputIndex + 1} (${fieldName}): No step container found`);
+                unmatchedInputs++;
+                return;
+            }
+            
+            const stepType = stepContainer.dataset.stepType;
+            const stepNumber = stepContainer.dataset.stepNumber || '1';
+            const stepSubtype = stepContainer.dataset.stepSubtype;
+            
+            const matchingOutputs = Array.from(allSummaryFields).filter(output => {
+                const outputFieldName = output.dataset.summaryField;
+                const summaryContainer = output.closest('[data-summary-type]');
+                
+                if (!summaryContainer) return false;
+                
+                const summaryType = summaryContainer.dataset.summaryType;
+                const summaryNumber = summaryContainer.dataset.summaryNumber;
+                const summarySubtype = summaryContainer.dataset.summarySubtype;
+                
+                let fieldMatch = outputFieldName === fieldName;
+                if (!fieldMatch && fieldName === 'taxCollection' && outputFieldName === 'taxClassification') {
+                    fieldMatch = true;
+                }
+                
+                const contextMatch = summaryType === stepType && 
+                                   summaryNumber === stepNumber && 
+                                   summarySubtype === stepSubtype;
+                
+                return fieldMatch && contextMatch;
+            });
+            
+            if (matchingOutputs.length > 0) {
+                console.log(`✅ MATCH: INPUT ${inputIndex + 1} (${fieldName}) → ${matchingOutputs.length} OUTPUT(S)`);
+                matchedPairs++;
+            } else {
+                console.log(`❌ NO MATCH: INPUT ${inputIndex + 1} (${fieldName}) - Context: ${stepType}-${stepNumber}-${stepSubtype}`);
+                unmatchedInputs++;
+            }
+        });
+        
+        console.log(`📊 SUMMARY: ✅ ${matchedPairs} matched, ❌ ${unmatchedInputs} unmatched`);
+    }
+
+    // Wait for DOM and then run analysis
+    function runAnalysis() {
+        const form = document.querySelector('[data-form="multistep"]');
+        if (!form) {
+            console.log('⏳ Waiting for form to load...');
+            setTimeout(runAnalysis, 1000);
+            return;
+        }
+
+        analyzeAllInputs();
+        analyzeSummaryOutputs();
+        analyzeMatching();
+        analyzeEntitySelections();
+        analyzeChildEntities();
+        
+        console.log('🔍 =================================================================');
+        console.log('🔍 DEBUG ANALYSIS COMPLETE');
+        console.log('🔍 =================================================================');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runAnalysis, 2000);
+        });
+    } else {
+        setTimeout(runAnalysis, 2000);
+    }
+
+})(); 
