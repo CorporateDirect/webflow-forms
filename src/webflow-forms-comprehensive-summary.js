@@ -34,6 +34,9 @@
         setup: function() {
             console.log('✅ Setting up PASSIVE data collection...');
             
+            // Initialize branching tracking (was missing)
+            this.setupBranchingTracking();
+            
             // Only use periodic scanning to avoid event conflicts
             setInterval(() => this.scanFormData(), 2000);
             
@@ -42,6 +45,12 @@
             window.showFormSummary = () => this.displaySummary();
             
             console.log('✅ NON-INTERFERING Summary ready!');
+        },
+
+        setupBranchingTracking: function() {
+            console.log('🌳 Setting up branching tracking...');
+            // This method was referenced but missing - adding empty implementation for now
+            // to prevent the error while maintaining non-interfering design
         },
 
         scanFormData: function() {
