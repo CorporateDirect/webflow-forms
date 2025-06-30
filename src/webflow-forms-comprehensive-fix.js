@@ -23,10 +23,12 @@
     const WebflowFormsComprehensive = {
         version: '3.0.0-comprehensive',
         initialized: false,
-        validationData: new Map(),
         branchingData: new Map(),
         phoneFieldMappings: new Map(),
-        activeStepItems: new Map(), // Track active step items per step
+        validationData: new Map(),
+        activeStepItems: new Map(),
+        currentStep: 0,
+        totalSteps: 0,
         
         // Enhanced logging system
         log: {
@@ -35,9 +37,10 @@
             warning: (msg, data) => console.warn(`⚠️ COMPREHENSIVE: ${msg}`, data || ''),
             error: (msg, data) => console.error(`❌ COMPREHENSIVE: ${msg}`, data || ''),
             debug: (msg, data) => console.log(`🔍 DEBUG: ${msg}`, data || ''),
-            validation: (msg, data) => console.log(`🎯 VALIDATION: ${msg}`, data || ''),
             branching: (msg, data) => console.log(`🌳 BRANCHING: ${msg}`, data || ''),
-            phone: (msg, data) => console.log(`📞 PHONE: ${msg}`, data || '')
+            phone: (msg, data) => console.log(`📞 PHONE: ${msg}`, data || ''),
+            validation: (msg, data) => console.log(`🎯 VALIDATION: ${msg}`, data || ''),
+            step: (msg, data) => console.log(`👣 STEP: ${msg}`, data || '')
         },
 
         init: function() {
@@ -45,10 +48,10 @@
             
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    setTimeout(() => this.setup(), 1000);
+                    setTimeout(() => this.setup(), 500);
                 });
             } else {
-                setTimeout(() => this.setup(), 1000);
+                setTimeout(() => this.setup(), 500);
             }
         },
 
@@ -56,28 +59,94 @@
             this.log.info('Setting up comprehensive form fix system...');
             
             try {
+                this.initializeStepVisibility();
                 this.initializeErrorSystem();
                 this.initializeBranchingLogic();
                 this.initializePhoneSystem();
                 this.initializeValidationSystem();
                 this.setupEventListeners();
+                
                 this.initialized = true;
                 this.log.success('Comprehensive form fix system ready!');
                 
-                // Export debug methods
+                // Export debug methods to global scope
                 window.debugFormsComprehensive = {
                     getValidationData: () => this.validationData,
                     getBranchingData: () => this.branchingData,
                     getPhoneFieldMappings: () => this.phoneFieldMappings,
                     getActiveStepItems: () => this.activeStepItems,
-                    validateStep: (stepId) => this.validateCurrentStep(),
+                    validateStep: () => this.validateCurrentStep(),
                     clearErrors: () => this.clearAllErrors(),
+                    getCurrentStep: () => this.currentStep,
+                    getTotalSteps: () => this.totalSteps,
                     version: this.version
                 };
                 
             } catch (error) {
                 this.log.error('Setup failed:', error);
             }
+        },
+
+        // Initialize step visibility control
+        initializeStepVisibility: function() {
+            this.log.info('Initializing multi-step visibility control...');
+            
+            const steps = document.querySelectorAll('[data-form="step"]');
+            this.totalSteps = steps.length;
+            
+            if (this.totalSteps === 0) {
+                this.log.warning('No steps found with [data-form="step"]');
+                return;
+            }
+            
+            // Hide all steps except the first one
+            steps.forEach((step, index) => {
+                if (index === 0) {
+                    step.style.display = 'block';
+                    this.currentStep = 0;
+                    this.log.step(`Showing step ${index + 1}`);
+                } else {
+                    step.style.display = 'none';
+                    this.log.step(`Hiding step ${index + 1}`);
+                }
+            });
+            
+            this.log.success(`Step visibility initialized - ${this.totalSteps} steps found, showing step 1`);
+        },
+
+        // Show specific step
+        showStep: function(stepIndex) {
+            const steps = document.querySelectorAll('[data-form="step"]');
+            
+            if (stepIndex < 0 || stepIndex >= steps.length) {
+                this.log.error(`Invalid step index: ${stepIndex}`);
+                return false;
+            }
+            
+            // Hide all steps
+            steps.forEach((step, index) => {
+                step.style.display = index === stepIndex ? 'block' : 'none';
+            });
+            
+            this.currentStep = stepIndex;
+            this.log.step(`Switched to step ${stepIndex + 1}`);
+            return true;
+        },
+
+        // Navigate to next step
+        nextStep: function() {
+            if (this.currentStep < this.totalSteps - 1) {
+                return this.showStep(this.currentStep + 1);
+            }
+            return false;
+        },
+
+        // Navigate to previous step
+        previousStep: function() {
+            if (this.currentStep > 0) {
+                return this.showStep(this.currentStep - 1);
+            }
+            return false;
         },
 
         // Fix Issue #4: Error Messages Always Visible
@@ -683,7 +752,15 @@
                 return false;
             }
             
-            this.log.success('Validation passed - allowing navigation');
+            this.log.success('Validation passed - proceeding to next step');
+            
+            // Navigate to next step
+            if (this.nextStep()) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.log.step(`Advanced to step ${this.currentStep + 1}`);
+            }
+            
             return true;
         },
 
