@@ -1,0 +1,67 @@
+/**
+ * Webflow Forms - Phone Styling Fix
+ * Fixes styling issues with country code dropdowns
+ * @version 1.0.0
+ */
+
+/* Hide native select elements that might be exposed */
+select[data-country-code="true"]:not(.w-select-field),
+select[data-step-field-name="countryCode"]:not(.w-select-field) {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Ensure Webflow styled dropdowns remain visible */
+.w-select-field,
+.form-select,
+.select-field {
+    position: relative !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: auto !important;
+}
+
+/* Fix for phone number containers */
+.phone-field-container,
+.phone-input-wrapper {
+    position: relative;
+    overflow: visible;
+}
+
+/* Ensure dropdown arrows work properly */
+.w-select-field:after,
+.form-select:after {
+    pointer-events: none;
+}
+
+/* Fix for any orphaned dropdown elements */
+select:not([class*="w-"]):not([class*="form-"]):not([class*="select-"]) {
+    position: absolute !important;
+    left: -9999px !important;
+    opacity: 0 !important;
+}
+
+/* Phone field styling consistency */
+input[type="tel"] {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Fix for country code display issues */
+.country-code-display {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Prevent dropdown from staying open */
+.w-select-field.w--open {
+    z-index: 1000;
+}
+
+/* Ensure proper layering */
+.w-form-field-wrapper {
+    position: relative;
+    z-index: 1;
+}
