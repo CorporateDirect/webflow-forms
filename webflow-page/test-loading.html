@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Enhanced Debug Loading</title>
+</head>
+<body>
+    <h1>Testing Enhanced Debug Library Loading</h1>
+    <div id="test-output"></div>
+    
+    <!-- Enhanced Debug Scripts -->
+    <script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@friday-june-20-final/dist/webflow-forms-enhanced-debug.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@friday-june-20-final/dist/webflow-forms-summary-fixed.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/CorporateDirect/webflow-forms@friday-june-20-final/dist/webflow-forms-comprehensive-summary.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const output = document.getElementById('test-output');
+            
+            // Test what's available globally
+            const tests = [
+                'window.debugForms exists: ' + (typeof window.debugForms !== 'undefined'),
+                'window.debugForms version: ' + (window.debugForms ? window.debugForms.version : 'Not found'),
+                'window.WebflowForms exists: ' + (typeof window.WebflowForms !== 'undefined'),
+                'Console methods available: ' + (window.console && typeof window.console.log === 'function')
+            ];
+            
+            output.innerHTML = '<ul>' + tests.map(test => '<li>' + test + '</li>').join('') + '</ul>';
+            
+            console.log('=== ENHANCED DEBUG TEST ===');
+            tests.forEach(test => console.log(test));
+            console.log('Available global objects:', Object.keys(window).filter(k => k.includes('debug') || k.includes('form') || k.includes('webflow')));
+        });
+    </script>
+</body>
+</html> 
